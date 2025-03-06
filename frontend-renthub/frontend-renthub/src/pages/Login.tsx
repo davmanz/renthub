@@ -14,7 +14,7 @@ const Login = () => {
     setError("");
     const success = await login(email, password);
     if (success) {
-      navigate("/dashboard/user"); // Redirige al usuario
+      navigate("/dashboard/user");
     } else {
       setError("Credenciales incorrectas");
     }

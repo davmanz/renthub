@@ -1,4 +1,5 @@
 import api from "../api/api";
+import endpoints from "../api/endpoints";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -14,33 +15,25 @@ const AdminDashboard = () => {
       const token = localStorage.getItem("access");
 
       if (!token) {
-        navigate("/login"); // Redirige al login si no hay token
+        navigate("/login");
         return;
       }
 
       try {
-        // Primero obtenemos la información del usuario autenticado
-        const userResponse = await api.get("/auth/me/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const role = userResponse.data.role; // Suponiendo que la API devuelve "role"
+        const userResponse = await api.get(endpoints.auth.me);
+        const role = userResponse.data.role;
         setUserRole(role);
 
-        if (role !== "admin") {
-          navigate("/dashboard/user"); // Redirige al dashboard del usuario si no es admin
+        if (role !== "admin" && role !== "superadmin") {
+          navigate("/dashboard/user");
           return;
         }
 
-        // Ahora sí, obtenemos los datos del dashboard del administrador
-        const response = await api.get("/admin-dashboard/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        const response = await api.get(endpoints.dashboard.admin);
         setData(response.data);
       } catch (error: any) {
         if (error.response?.status === 403) {
-          navigate("/dashboard/user"); // Redirige si no tiene permisos
+          navigate("/dashboard/user");
         } else {
           console.error("Error al obtener el dashboard del administrador", error);
           setError("Hubo un error al cargar los datos.");
@@ -53,11 +46,10 @@ const AdminDashboard = () => {
     fetchData();
   }, [navigate]);
 
-  // Función para cerrar sesión
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    navigate("/login"); // Redirige al Login
+    navigate("/login");
   };
 
   if (loading) return <p>Cargando...</p>;
@@ -65,11 +57,9 @@ const AdminDashboard = () => {
 
   return (
     <div>
+      <p>Tu rol es: {userRole}</p>
       <h1>Dashboard del Administrador</h1>
-      <button onClick={logout} style={{ background: "red", color: "white", padding: "8px 16px", border: "none", cursor: "pointer" }}>
-        Cerrar Sesión
-      </button>
-
+      <button onClick={logout}>Cerrar Sesión</button>
       <h2>Pagos Vencidos / No Verificados</h2>
       <ul>
         {data?.unverified_payments?.map((payment: any) => (
@@ -78,7 +68,6 @@ const AdminDashboard = () => {
           </li>
         ))}
       </ul>
-
       <h2>Pagos de Arriendo</h2>
       <ul>
         {data?.rental_payments?.map((rental: any) => (
@@ -87,7 +76,6 @@ const AdminDashboard = () => {
           </li>
         ))}
       </ul>
-
       <h2>Pagos por Lavadora</h2>
       <ul>
         {data?.laundry_payments?.map((laundry: any) => (

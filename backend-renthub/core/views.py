@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from core.models import (CustomUser, 
                          Contract, 
                          PaymentHistory, 
@@ -69,6 +70,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Solo los superadmins pueden eliminar usuarios."}, status=status.HTTP_403_FORBIDDEN)
 
         return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """ Devuelve la información del usuario autenticado """
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
 
 class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.all()
@@ -173,7 +180,7 @@ class AdminDashboardView(APIView):
     def get_unpaid_users(self):
         """Obtiene la lista de usuarios con pagos vencidos"""
         unpaid_users = CustomUser.objects.filter(
-            contract__paymenthistory__status="pending"
+            contracts__payments__status="pending"
         ).distinct().values("id", "first_name", "last_name", "email")
         return unpaid_users
 

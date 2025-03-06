@@ -1,4 +1,5 @@
 import api from "../api/api";
+import endpoints from "../api/endpoints";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,14 +14,12 @@ const UserDashboard = () => {
       const token = localStorage.getItem("access");
 
       if (!token) {
-        navigate("/login"); // Redirige al login si no hay token
+        navigate("/login");
         return;
       }
 
       try {
-        const response = await api.get("/user-dashboard/", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get(endpoints.dashboard.user);
         setData(response.data);
       } catch (error) {
         console.error("Error al obtener el dashboard", error);
@@ -33,11 +32,16 @@ const UserDashboard = () => {
     fetchData();
   }, [navigate]);
 
-  // Función para cerrar sesión
+  // Redirigir a Dashboard de Admin
+  const goToAdmin = () => {
+    navigate("/dashboard/admin");
+  };
+
+  // Cerrar sesión
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-    navigate("/login"); // Redirige al Login
+    navigate("/login");
   };
 
   if (loading) return <p>Cargando...</p>;
@@ -46,9 +50,15 @@ const UserDashboard = () => {
   return (
     <div>
       <h1>Dashboard del Usuario</h1>
+      
+      <button onClick={goToAdmin} style={{ background: "blue", color: "white", padding: "8px 16px", border: "none", cursor: "pointer", marginRight: "10px" }}>
+        Ir a Administración
+      </button>
+
       <button onClick={logout} style={{ background: "red", color: "white", padding: "8px 16px", border: "none", cursor: "pointer" }}>
         Cerrar Sesión
       </button>
+
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
   );
