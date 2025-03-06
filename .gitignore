@@ -56,3 +56,8 @@ dist/
 *.~*
 *.orig
 
+# --- Carpeta Migraciones ---
+*/migrations/
+!*/migrations/__init__.py
+
+
