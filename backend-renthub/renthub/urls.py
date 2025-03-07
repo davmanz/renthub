@@ -8,7 +8,8 @@ from core.views import (CustomUserViewSet, ContractViewSet,
                         PaymentHistoryViewSet, RoomViewSet, 
                         BuildingViewSet, ReferencePersonViewSet,
                         UserDashboardView, AdminDashboardView,
-                        LaundryDashboardView, PaymentDetailView)
+                        LaundryDashboardView, PaymentDetailView,
+                        DocumentTypesViewSet)
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -21,6 +22,8 @@ router.register(r'payments', PaymentHistoryViewSet)
 router.register(r'rooms', RoomViewSet)
 router.register(r'buildings', BuildingViewSet)
 router.register(r'references', ReferencePersonViewSet)
+router.register(r'document-types', DocumentTypesViewSet)
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),

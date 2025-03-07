@@ -4,7 +4,8 @@ from core.models import (CustomUser,
                          Contract, 
                          PaymentHistory, 
                          Room, Building,
-                         ReferencePerson
+                         ReferencePerson,
+                         DocumentType
                          )
 from core.serializers import (CustomUserSerializer, 
                               ContractSerializer, 
@@ -12,11 +13,13 @@ from core.serializers import (CustomUserSerializer,
                               RoomSerializer, 
                               BuildingSerializer,
                               ReferencePersonSerializer,
-                              LaundryBookingSerializer
+                              LaundryBookingSerializer,
+                              DocumentTypeSerializer
                               )
 from rest_framework.permissions import IsAuthenticated
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from rest_framework.views import APIView
+from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.generics import RetrieveAPIView
 from core.models import PaymentHistory, Contract, LaundryBooking
@@ -126,15 +129,41 @@ class BuildingViewSet(viewsets.ModelViewSet):
     serializer_class = BuildingSerializer
     permission_classes = [IsSuperAdmin]  # Solo Superadmins pueden gestionar edificios
 
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from core.models import ReferencePerson
+from core.serializers import ReferencePersonSerializer
+from core.permissions import IsSuperAdmin, IsAdmin
+
 class ReferencePersonViewSet(viewsets.ModelViewSet):
     queryset = ReferencePerson.objects.all()
     serializer_class = ReferencePersonSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Cada usuario solo puede ver sus propias referencias"""
+        
         user = self.request.user
-        return ReferencePerson.objects.filter(user=user)
+
+        if user.is_superadmin() or user.is_admin():
+            return ReferencePerson.objects.all()  # Admins y Super Admins ven todo
+        return ReferencePerson.objects.filter(user=user)  # Tenants solo ven sus propias referencias
+
+    def create(self, request, *args, **kwargs):
+       
+        user = request.user
+
+        if not user.is_superadmin() and not user.is_admin():
+            return Response(
+                {"detail": "No tienes permisos para crear personas de referencia."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        return super().create(request, *args, **kwargs)
+
+class DocumentTypesViewSet(ReadOnlyModelViewSet):
+    queryset = DocumentType.objects.all()
+    serializer_class = DocumentTypeSerializer
+    permission_classes = [IsAdmin]
 
 
 # Respuesta asi los dashboardfrom rest_framework.views import APIView

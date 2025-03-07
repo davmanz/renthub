@@ -4,7 +4,7 @@ from core.models import (CustomUser,
                          PaymentHistory, 
                          Room, Building,
                          ReferencePerson,
-                         LaundryBooking
+                         LaundryBooking, DocumentType
                          )
 
 class ReferencePersonSerializer(serializers.ModelSerializer):
@@ -58,4 +58,14 @@ class BuildingSerializer(serializers.ModelSerializer):
 class LaundryBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = LaundryBooking
+        fields = "__all__"
+
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = "__all__"
+
+
+    class Meta:
+        model = DocumentType
         fields = "__all__"

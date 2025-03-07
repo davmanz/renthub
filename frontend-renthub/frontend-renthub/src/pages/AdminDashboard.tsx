@@ -1,90 +1,116 @@
+import AdminLayout from "./AdminLayout";
 import api from "../api/api";
 import endpoints from "../api/endpoints";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  Container,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  Alert,
+  Typography
+} from "@mui/material";
 
 const AdminDashboard = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [userRole, setUserRole] = useState("");
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("access");
-
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
       try {
-        const userResponse = await api.get(endpoints.auth.me);
-        const role = userResponse.data.role;
-        setUserRole(role);
-
-        if (role !== "admin" && role !== "superadmin") {
-          navigate("/dashboard/user");
-          return;
-        }
-
         const response = await api.get(endpoints.dashboard.admin);
         setData(response.data);
       } catch (error: any) {
-        if (error.response?.status === 403) {
-          navigate("/dashboard/user");
-        } else {
-          console.error("Error al obtener el dashboard del administrador", error);
-          setError("Hubo un error al cargar los datos.");
-        }
+        console.error("Error al obtener el dashboard del administrador", error);
+        setError("Hubo un error al cargar los datos.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [navigate]);
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    navigate("/login");
-  };
+  if (loading) {
+    return (
+      <AdminLayout>
+        <CircularProgress />
+      </AdminLayout>
+    );
+  }
 
-  if (loading) return <p>Cargando...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  if (error) {
+    return (
+      <AdminLayout>
+        <Alert severity="error">{error}</Alert>
+      </AdminLayout>
+    );
+  }
 
   return (
-    <div>
-      <p>Tu rol es: {userRole}</p>
-      <h1>Dashboard del Administrador</h1>
-      <button onClick={logout}>Cerrar Sesión</button>
-      <h2>Pagos Vencidos / No Verificados</h2>
-      <ul>
-        {data?.unverified_payments?.map((payment: any) => (
-          <li key={payment.id}>
-            Pago {payment.id} - Usuario: {payment.user} - Estado: {payment.status}
-          </li>
-        ))}
-      </ul>
-      <h2>Pagos de Arriendo</h2>
-      <ul>
-        {data?.rental_payments?.map((rental: any) => (
-          <li key={rental.id}>
-            Habitación {rental.room_number} - Fecha: {rental.payment_date} - Periodo: {rental.month_paid}
-          </li>
-        ))}
-      </ul>
-      <h2>Pagos por Lavadora</h2>
-      <ul>
-        {data?.laundry_payments?.map((laundry: any) => (
-          <li key={laundry.id}>
-            Habitación {laundry.room_number} - Fecha: {laundry.payment_date} - Hora: {laundry.time_selected}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <AdminLayout>
+      <Container maxWidth="lg">
+        <Typography variant="h4" sx={{ mt: 3, mb: 2, color: "#1976d2" }}>
+          Resumen de Pagos
+        </Typography>
+
+        {/* Tabla de Pagos No Verificados */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+          Pagos No Verificados
+        </Typography>
+        <TableContainer component={Paper} sx={{ mb: 3 }}>
+          <Table>
+            <TableHead sx={{ bgcolor: "#1976d2" }}>
+              <TableRow>
+                <TableCell sx={{ color: "white" }}>ID Pago</TableCell>
+                <TableCell sx={{ color: "white" }}>Usuario</TableCell>
+                <TableCell sx={{ color: "white" }}>Estado</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data?.unverified_payments?.map((payment: any) => (
+                <TableRow key={payment.id} hover>
+                  <TableCell>{payment.id}</TableCell>
+                  <TableCell>{payment.user}</TableCell>
+                  <TableCell>{payment.status}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Tabla de Pagos de Arriendo */}
+        <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>
+          Pagos de Arriendo
+        </Typography>
+        <TableContainer component={Paper} sx={{ mb: 3 }}>
+          <Table>
+            <TableHead sx={{ bgcolor: "#1976d2" }}>
+              <TableRow>
+                <TableCell sx={{ color: "white" }}>Habitación</TableCell>
+                <TableCell sx={{ color: "white" }}>Fecha</TableCell>
+                <TableCell sx={{ color: "white" }}>Periodo</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {data?.rental_payments?.map((rental: any) => (
+                <TableRow key={rental.id} hover>
+                  <TableCell>{rental.room_number}</TableCell>
+                  <TableCell>{rental.payment_date}</TableCell>
+                  <TableCell>{rental.month_paid}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Container>
+    </AdminLayout>
   );
 };
 

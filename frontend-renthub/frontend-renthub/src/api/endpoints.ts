@@ -4,11 +4,19 @@ const endpoints = {
   auth: {
     login: `${API_BASE}/token/`,
     me: `${API_BASE}/users/me/`,
+    
   },
+
+  createUsers :{
+    createUser: `${API_BASE}/users/`,
+    documentTypes: `${API_BASE}/document-types/`
+  },
+
   dashboard: {
     user: `${API_BASE}/user-dashboard/`,
     admin: `${API_BASE}/admin-dashboard/`,
   },
+  
   payments: {
     unverified: `${API_BASE}/payments/unverified/`,
     rental: `${API_BASE}/payments/rental/`,
