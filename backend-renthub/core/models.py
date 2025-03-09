@@ -24,7 +24,7 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 class DocumentType(models.Model):
-    id = models.AutoField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
@@ -151,7 +151,6 @@ class Building(models.Model):
 
 class ReferencePerson(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="references")
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
