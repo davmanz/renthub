@@ -9,7 +9,8 @@ const endpoints = {
 
   createUsers :{
     createUser: `${API_BASE}/users/`,
-    documentTypes: `${API_BASE}/document-types/`
+    documentTypes: `${API_BASE}/document-types/`,
+    referencePerson: `${API_BASE}/references/` 
   },
 
   dashboard: {

@@ -141,13 +141,8 @@ class ReferencePersonViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        
-        user = self.request.user
-
-        if user.is_superadmin() or user.is_admin():
-            return ReferencePerson.objects.all()  # Admins y Super Admins ven todo
-        return ReferencePerson.objects.filter(user=user)  # Tenants solo ven sus propias referencias
-
+        return ReferencePerson.objects.all()  
+ 
     def create(self, request, *args, **kwargs):
        
         user = request.user
