@@ -13,8 +13,11 @@ class ReferencePersonSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class CustomUserSerializer(serializers.ModelSerializer):
-    reference_1 = ReferencePersonSerializer(required=False, allow_null=True)
-    reference_2 = ReferencePersonSerializer(required=False, allow_null=True)
+    reference_1 = serializers.PrimaryKeyRelatedField(
+        queryset=ReferencePerson.objects.all(), required=False, allow_null=True)
+      
+    reference_2 = serializers.PrimaryKeyRelatedField(
+        queryset=ReferencePerson.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = CustomUser

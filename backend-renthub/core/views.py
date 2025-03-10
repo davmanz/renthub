@@ -1,11 +1,22 @@
 from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.response import Response
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+
+from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
+from core.serializers import ReferencePersonSerializer
+from core.permissions import IsSuperAdmin, IsAdmin
 from core.models import (CustomUser, 
                          Contract, 
                          PaymentHistory, 
                          Room, Building,
                          ReferencePerson,
-                         DocumentType
+                         DocumentType,
+                         LaundryBooking,
+                         ReferencePerson
                          )
 from core.serializers import (CustomUserSerializer, 
                               ContractSerializer, 
@@ -16,20 +27,27 @@ from core.serializers import (CustomUserSerializer,
                               LaundryBookingSerializer,
                               DocumentTypeSerializer
                               )
-from rest_framework.permissions import IsAuthenticated
-from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
-from rest_framework.views import APIView
-from rest_framework.viewsets import ReadOnlyModelViewSet
-from rest_framework.response import Response
-from rest_framework.generics import RetrieveAPIView
-from core.models import PaymentHistory, Contract, LaundryBooking
-from datetime import date, timedelta, datetime
 
+from datetime import date, timedelta, datetime
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        """ Restringe la creación de usuarios según el rol """
+        user = request.user
+
+        # Solo los administradores pueden crear usuarios
+        if not user.is_admin() and not user.is_superadmin():
+            return Response({"detail": "No tienes permisos para crear usuarios."}, status=status.HTTP_403_FORBIDDEN)
+
+        # Verifica que si un admin crea un usuario, solo puede ser un 'tenant'
+        if user.is_admin() and request.data.get("role") in ["admin", "superadmin"]:
+            return Response({"detail": "No puedes crear este tipo de usuario."}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Restringe la visibilidad según el rol y permite filtrar por ?role=tenant o ?role=admin"""
@@ -128,12 +146,6 @@ class BuildingViewSet(viewsets.ModelViewSet):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [IsSuperAdmin]  # Solo Superadmins pueden gestionar edificios
-
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from core.models import ReferencePerson
-from core.serializers import ReferencePersonSerializer
-from core.permissions import IsSuperAdmin, IsAdmin
 
 class ReferencePersonViewSet(viewsets.ModelViewSet):
     queryset = ReferencePerson.objects.all()
@@ -276,7 +288,6 @@ class LaundryDashboardView(APIView):
             "available_days": self.get_available_days(),
             "bookings": self.get_bookings(request.user)
         })
-
 
 class PaymentDetailView(RetrieveAPIView):
     """Devuelve el detalle de un pago específico"""
