@@ -49,9 +49,12 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class RoomSerializer(serializers.ModelSerializer):
+    building_name = serializers.CharField(source="building.name", read_only=True)
+
     class Meta:
         model = Room
-        fields = "__all__"
+        fields = ["id", "room_number", "is_occupied", "building", "building_name"]
+
 
 class BuildingSerializer(serializers.ModelSerializer):
     class Meta:

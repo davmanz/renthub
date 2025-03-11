@@ -13,6 +13,18 @@ const endpoints = {
     referencePerson: `${API_BASE}/references/` 
   },
 
+  createContract:{
+    users: `${API_BASE}/users/`,
+    rommsAvaible: `${API_BASE}/rooms/available/`,
+    contracts: `${API_BASE}/contracts/`
+  },
+
+  createSites:{
+    rooms: `${API_BASE}/rooms/`,
+    rooms_id: `${API_BASE}/rooms/available/?building_id`,
+    building: `${API_BASE}/buildings/`
+  },
+
   dashboard: {
     user: `${API_BASE}/user-dashboard/`,
     admin: `${API_BASE}/admin-dashboard/`,

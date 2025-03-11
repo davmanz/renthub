@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import endpoints from "../api/endpoints";
 import AdminLayout from "./AdminLayout";
-import ReferenceModal from "./ReferenceModal";
+import ReferenceModal from "./modalsCreateTenant/ReferenceModal";
 import {
   TextField,
   Button,
@@ -70,7 +70,6 @@ const CreateTenant = () => {
     }
   }, [formData.references_count]);
 
-  // ✅ Función para agregar referencias al estado sin recargar la página
   const handleReferenceAdded = (newReference: Reference) => {
     setAvailableReferences((prev) => [...prev, newReference]); // 🔥 Actualiza las referencias en tiempo real
   };
@@ -84,7 +83,6 @@ const CreateTenant = () => {
     setFormData({ ...formData, [name]: value });
   };
   
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -114,14 +112,12 @@ const CreateTenant = () => {
     if (selectedReferenceField) {
       setFormData({
         ...formData,
-        [selectedReferenceField]: referenceId,  // ✅ Guarda el UUID correctamente
+        [selectedReferenceField]: referenceId,
       });
       setOpenModal(false);
     }
   };
   
-  
-
   return (
     <AdminLayout>
       <Container maxWidth="sm">
@@ -198,7 +194,7 @@ const CreateTenant = () => {
                 </>
               )}
 
-              {formData.references_count >= 2 && (  // Aquí el cambio es >= 2 en lugar de === 2
+              {formData.references_count >= 2 && (
                 <>
                   <Grid item xs={12}>
                     <Button fullWidth variant="outlined" onClick={() => handleReferenceSelection("reference_2")}>
@@ -223,7 +219,7 @@ const CreateTenant = () => {
                   fullWidth 
                   variant="contained" 
                   color="primary"
-                  disabled={loading} // Para evitar envíos múltiples
+                  disabled={loading}
                 >
                   {loading ? "Guardando..." : "Guardar Datos"}
                 </Button>
@@ -232,13 +228,12 @@ const CreateTenant = () => {
           </form>
         </Paper>
 
-        {/* ✅ Aquí pasamos la función para actualizar referencias en tiempo real */}
         <ReferenceModal 
           open={openModal} 
           onClose={() => setOpenModal(false)} 
           references={availableReferences} 
           onSelect={selectReference} 
-          onReferenceAdded={handleReferenceAdded} // 🔥 Se asegura de actualizar referencias
+          onReferenceAdded={handleReferenceAdded} 
         />
       </Container>
     </AdminLayout>

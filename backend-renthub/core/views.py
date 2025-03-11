@@ -140,7 +140,32 @@ class PaymentHistoryViewSet(viewsets.ModelViewSet):
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-    permission_classes = [IsAdmin]  # Solo Admins pueden gestionar habitaciones
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        """Filtra habitaciones por `building_id` si está presente en la petición."""
+        queryset = super().get_queryset()
+        building_id = self.request.query_params.get("building_id")
+
+        if building_id:
+            queryset = queryset.filter(building__id=building_id)
+        
+        return queryset
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
+    def available(self, request):
+        """Devuelve solo las habitaciones disponibles en un `building_id` dado."""
+        building_id = self.request.query_params.get("building_id")
+
+        # Filtramos solo si `building_id` está presente
+        if building_id:
+            available_rooms = Room.objects.filter(is_occupied=False, building__id=building_id)
+        else:
+            available_rooms = Room.objects.filter(is_occupied=False)
+
+        serializer = self.get_serializer(available_rooms, many=True)
+        return Response(serializer.data)
+
 
 class BuildingViewSet(viewsets.ModelViewSet):
     queryset = Building.objects.all()

@@ -1,6 +1,8 @@
 📌 Documentación de Endpoints
 Aquí tienes la lista de endpoints con ejemplos JSON de solicitud y respuesta.
-
+##############################################################################
+##############################################################################
+##############################################################################
 1️⃣ Autenticación
 Acción	Método	Ruta API	Descripción
 Login	POST	/api/token/	Obtiene un JWT Token
@@ -23,6 +25,10 @@ Editar
     "access": "jwt_access_token",
     "refresh": "jwt_refresh_token"
 }
+
+##############################################################################
+##############################################################################
+##############################################################################
 2️⃣ Gestión de Usuarios
 Acción	Método	Ruta API	Descripción
 Listar usuarios	GET	/api/users/	Devuelve todos los usuarios (solo admins)
@@ -64,6 +70,9 @@ Editar
     "reference_1": null,
     "reference_2": null
 }
+##############################################################################
+##############################################################################
+##############################################################################
 3️⃣ Dashboard de Usuario
 Acción	Método	Ruta API	Descripción
 Obtener dashboard usuario	GET	/api/user-dashboard/	Muestra pagos pendientes, próximos pagos y periodos a pagar
@@ -82,6 +91,9 @@ Editar
         "end_date": "2024-12-31"
     }
 }
+##############################################################################
+##############################################################################
+##############################################################################
 4️⃣ Dashboard de Administrador
 Acción	Método	Ruta API	Descripción
 Obtener dashboard admin	GET	/api/admin-dashboard/	Lista pagos pendientes, pagos sin verificar y pagos de lavadora
@@ -101,6 +113,9 @@ Editar
         {"id": 3, "contract__user__first_name": "Luis", "contract__user__last_name": "Martínez", "month_paid": "Febrero", "payment_date": "2024-02-05", "status": "confirmed"}
     ]
 }
+##############################################################################
+##############################################################################
+##############################################################################
 5️⃣ Dashboard de Lavadoras
 Acción	Método	Ruta API	Descripción
 Obtener dashboard lavadoras	GET	/api/laundry-dashboard/	Muestra disponibilidad y reservas

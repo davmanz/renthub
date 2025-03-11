@@ -5,6 +5,8 @@ import Login from "../pages/Login";
 import UserDashboard from "../pages/UserDashboard";
 import AdminDashboard from "../pages/AdminDashboard";
 import CreateTenant from "../pages/CreateTenant";
+import CreateContract from "../pages/CreateContract";
+import Sites from "../pages/Sites";
 import NotFound from "../pages/NotFound";
 
 const ProtectedRoute = ({ element }: { element: ReactElement }) => {
@@ -21,6 +23,8 @@ const AppRoutes = () => {
         <Route path="/dashboard/user" element={<ProtectedRoute element={<UserDashboard />} />} />
         <Route path="/dashboard/admin" element={<ProtectedRoute element={<AdminDashboard />} />} />
         <Route path="/dashboard/admin/create-tenant" element={<ProtectedRoute element={<CreateTenant />} />} />
+        <Route path="/dashboard/admin/create-contract" element={<ProtectedRoute element={<CreateContract />} />} />
+        <Route path="/dashboard/admin/create-sites" element={<ProtectedRoute element={<Sites />} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
