@@ -1,3 +1,6 @@
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -7,8 +10,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
-from core.serializers import ReferencePersonSerializer
-from core.permissions import IsSuperAdmin, IsAdmin
 from core.models import (CustomUser, 
                          Contract, 
                          PaymentHistory, 
@@ -35,8 +36,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
 
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
     def create(self, request, *args, **kwargs):
-        """ Restringe la creación de usuarios según el rol """
+        """ Restringe la creación de usuarios y maneja la contraseña """
         user = request.user
 
         # Solo los administradores pueden crear usuarios
@@ -47,7 +49,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if user.is_admin() and request.data.get("role") in ["admin", "superadmin"]:
             return Response({"detail": "No puedes crear este tipo de usuario."}, status=status.HTTP_403_FORBIDDEN)
 
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()  # 🔹 Aquí ya se maneja la contraseña correctamente en el serializer
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
         """Restringe la visibilidad según el rol y permite filtrar por ?role=tenant o ?role=admin"""
@@ -178,10 +184,10 @@ class ReferencePersonViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return ReferencePerson.objects.all()  
- 
+        return ReferencePerson.objects.all()
+
+    @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
     def create(self, request, *args, **kwargs):
-       
         user = request.user
 
         if not user.is_superadmin() and not user.is_admin():
@@ -203,37 +209,42 @@ class DocumentTypesViewSet(ReadOnlyModelViewSet):
 class UserDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get_payments_pending(self, user):
-        """Obtiene los pagos vencidos del usuario y los ordena por fecha descendente"""
-        return PaymentHistory.objects.filter(contract__user=user, status="pending").order_by("-payment_date").values(
-            "id", "month_paid", "payment_date", "status"
+    def get(self, request):
+        user = request.user
+
+        payments_pending = PaymentHistory.objects.filter(
+            contract__user=user, status="pending"
+        ).values("id", "month_paid", "payment_date")
+
+        next_payment = (
+            PaymentHistory.objects.filter(contract__user=user)
+            .order_by("payment_date")
+            .values("month_paid")
+            .first()
         )
 
-    def get_next_payment(self, user):
-        """Obtiene el próximo mes que debe pagar"""
-        last_payment = PaymentHistory.objects.filter(contract__user=user).order_by("-month_paid").first()
-        if last_payment:
-            return {"next_month": last_payment.month_paid + 1}
-        return {"next_month": date.today().month}  # Si no tiene pagos previos, asume el mes actual
+        payment_periods = PaymentHistory.objects.filter(
+            contract__user=user
+        ).values_list("month_paid", flat=True)
 
-    def get_payment_periods(self, user):
-        """Lista todos los periodos que debe pagar el usuario"""
-        contract = Contract.objects.filter(user=user).first()
-        if contract:
-            return {
-                "start_date": contract.start_date,
-                "end_date": contract.end_date
-            }
-        return {}
+        # Información del usuario
+        user_data = {
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "phone_number": user.phone_number,
+            "profile_photo": request.build_absolute_uri(user.profile_photo.url) if user.profile_photo else None,
+        }
 
-    def get(self, request):
-        """Retorna la información del dashboard del usuario"""
-        user = request.user
-        return Response({
-            "payments_pending": self.get_payments_pending(user),
-            "next_payment": self.get_next_payment(user),
-            "payment_periods": self.get_payment_periods(user)
-        })
+        return Response(
+            {
+                "user": user_data, 
+                "payments_pending": list(payments_pending),
+                "next_payment": next_payment,
+                "payment_periods": list(payment_periods),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]  # Solo Admins y Superadmins pueden acceder

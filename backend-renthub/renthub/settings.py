@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import environ
 
 import os
 
@@ -13,7 +14,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&6y1mik#j$t&re$q8fw36hzk#ktx!3q=de7gx%b8a)1cmgp3%#'
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
+
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -33,7 +37,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "axes",
     "core",
-    "corsheaders"
+    "corsheaders",
 ]
 
 MIDDLEWARE = [

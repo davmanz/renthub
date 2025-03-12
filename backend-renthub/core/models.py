@@ -162,12 +162,44 @@ class ReferencePerson(models.Model):
         return f"{self.first_name} {self.last_name} ({self.document_number})"
 
 class LaundryBooking(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pendiente"),
+        ("approved", "Aprobado"),
+        ("rejected", "Rechazado"),
+        ("proposed", "Propuesta"),
+        ("counter_proposal", "Contrapropuesta"),
+    ]
+
+    USER_RESPONSE_CHOICES = [
+        ("pending", "Pendiente"),
+        ("accepted", "Aceptada"),
+        ("rejected", "Rechazada"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="laundry_bookings")
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     date = models.DateField()
     time_slot = models.CharField(max_length=20)  # Ejemplo: "08:00-10:00"
-    is_confirmed = models.BooleanField(default=False)
+    voucher_image = models.ImageField(upload_to="laundry/vouchers/", blank=False, null=False)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    admin = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_laundry_bookings")
+    admin_comment = models.TextField(blank=True, null=True)  # Motivo de rechazo o propuesta
+
+    # Propuesta del administrador
+    proposed_date = models.DateField(blank=True, null=True)
+    proposed_time_slot = models.CharField(max_length=20, blank=True, null=True)
+
+    # Respuesta del usuario a la propuesta del admin
+    user_response = models.CharField(max_length=10, choices=USER_RESPONSE_CHOICES, default="pending")  
+
+    # Contrapropuesta del usuario
+    counter_proposal_date = models.DateField(blank=True, null=True)
+    counter_proposal_time_slot = models.CharField(max_length=20, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.first_name} - {self.date} {self.time_slot}"
+        return f"{self.user.first_name} - {self.date} {self.time_slot} ({self.status})"

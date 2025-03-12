@@ -109,7 +109,7 @@ const CreateContract = () => {
                 <TextField fullWidth label="Monto de Renta" name="rent_amount" value={formData.rent_amount} onChange={handleChange} required />
               </Grid>
               <Grid item xs={6}>
-                <TextField fullWidth label="Depósito" name="deposit" value={formData.deposit_amount} onChange={handleChange} required />
+                <TextField fullWidth label="Depósito" name="deposit_amount" value={formData.deposit_amount} onChange={handleChange} required />
               </Grid>
 
               <Grid item xs={6}>
@@ -122,7 +122,7 @@ const CreateContract = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <TextField fullWidth label="Precio WiFi" name="wifi_price" value={formData.wifi_cost} onChange={handleChange} disabled={formData.includes_wifi === "false"} />
+                <TextField fullWidth label="Precio WiFi" name="wifi_cost" value={formData.wifi_cost} onChange={handleChange} disabled={formData.includes_wifi === "false"} />
               </Grid>
 
               <Grid item xs={12}>
