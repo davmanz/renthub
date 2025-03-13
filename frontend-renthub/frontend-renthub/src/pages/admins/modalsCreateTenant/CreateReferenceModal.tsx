@@ -7,8 +7,8 @@ import {
   TextField,
   Button,
 } from "@mui/material";
-import api from "../../api/api";
-import endpoints from "../../api/endpoints";
+import api from "../../../api/api";
+import endpoints from "../../../api/endpoints";
 
 interface CreateReferenceModalProps {
   open: boolean;

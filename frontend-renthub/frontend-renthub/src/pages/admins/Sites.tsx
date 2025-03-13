@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import api from "../api/api";
-import endpoints from "../api/endpoints";
+import api from "../../api/api";
+import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
 import CreateBuildingModal from "./modalsSites/CreateBuildingModal";
 import CreateRoomModal from "./modalsSites/CreateRoomModal";

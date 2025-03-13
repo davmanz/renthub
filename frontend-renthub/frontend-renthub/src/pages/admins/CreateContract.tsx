@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/api";
-import endpoints from "../api/endpoints";
+import api from "../../api/api";
+import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
 import SelectUserModal from "./modalsCreateContract/SelectUserModal";
 import SelectRoomModal from "./modalsCreateContract/SelectRoomModal";

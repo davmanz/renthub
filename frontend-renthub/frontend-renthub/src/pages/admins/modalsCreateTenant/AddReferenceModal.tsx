@@ -12,8 +12,8 @@ import {
     FormControl, 
     InputLabel 
 } from "@mui/material";
-import api from "../../api/api";
-import endpoints from "../../api/endpoints";
+import api from "../../../api/api";
+import endpoints from "../../../api/endpoints";
 
 interface AddReferenceModalProps {
   open: boolean;

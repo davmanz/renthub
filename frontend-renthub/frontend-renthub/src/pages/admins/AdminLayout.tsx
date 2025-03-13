@@ -1,8 +1,8 @@
 import { ReactNode, useEffect, useState, useContext } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import api from "../api/api";
-import endpoints from "../api/endpoints";
+import api from "../../api/api";
+import endpoints from "../../api/endpoints";
 import {
   AppBar,
   Toolbar,

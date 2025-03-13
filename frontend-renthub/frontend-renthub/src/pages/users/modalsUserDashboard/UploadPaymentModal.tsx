@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, CircularProgress, Alert } from "@mui/material";
-import api from "../../api/api";
-import endpoints from "../../api/endpoints";
+import api from "../../../api/api";
+import endpoints from "../../../api/endpoints";
 
 const UploadPaymentModal = ({ open, onClose, nextPayment }: { open: boolean; onClose: () => void; nextPayment: string }) => {
   const [file, setFile] = useState<File | null>(null);

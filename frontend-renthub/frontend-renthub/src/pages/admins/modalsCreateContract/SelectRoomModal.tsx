@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import api from "../../api/api";
-import endpoints from "../../api/endpoints";
+import api from "../../../api/api";
+import endpoints from "../../../api/endpoints";
 import { Dialog, DialogTitle, DialogContent, TextField, List, ListItem, DialogActions, Button, MenuItem, Select } from "@mui/material";
 
 const SelectRoomModal = ({ open, onClose, onSelect }) => {

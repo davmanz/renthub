@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/api";
-import endpoints from "../api/endpoints";
+import api from "../../api/api";
+import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
 import ReferenceModal from "./modalsCreateTenant/ReferenceModal";
 import {
@@ -18,7 +18,7 @@ import {
   FormControl,
   InputLabel,
 } from "@mui/material";
-import { Reference, DocumentType } from "../types/types";
+import { Reference, DocumentType } from "../../types/types";
 
 const CreateTenant = () => {
   const navigate = useNavigate();
@@ -90,8 +90,7 @@ const CreateTenant = () => {
     setSuccess(false);
 
     try {
-      const { references_count, ...dataToSend } = formData;  // Elimina references_count
-      console.log("Enviando datos:", dataToSend); // Debug en consola
+      const { references_count, ...dataToSend } = formData;
   
       await api.post(endpoints.createUsers.createUser, dataToSend);
       setSuccess(true);
