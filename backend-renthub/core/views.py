@@ -203,6 +203,90 @@ class DocumentTypesViewSet(ReadOnlyModelViewSet):
     serializer_class = DocumentTypeSerializer
     permission_classes = [IsAdmin]
 
+class LaundryBookingViewSet(viewsets.ModelViewSet):
+    queryset = LaundryBooking.objects.all()
+    serializer_class = LaundryBookingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filtra las reservas según el rol del usuario"""
+        user = self.request.user
+
+        if user.is_admin():
+            return LaundryBooking.objects.filter(status="pending")
+        return LaundryBooking.objects.filter(user=user)
+
+    def create(self, request, *args, **kwargs):
+        """Crear una nueva reserva con comprobante de pago (usuario)"""
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(user=request.user, status="pending")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def approve(self, request, pk=None):
+        """Aprueba una reserva de lavandería"""
+        booking = self.get_object()
+        booking.status = "approved"
+        booking.save()
+        return Response({"message": "Reserva aprobada"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def reject(self, request, pk=None):
+        """Rechaza una reserva con un comentario"""
+        booking = self.get_object()
+        comment = request.data.get("admin_comment", "")
+        if not comment:
+            return Response({"error": "Se requiere un motivo de rechazo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = "rejected"
+        booking.admin_comment = comment
+        booking.save()
+        return Response({"message": "Reserva rechazada"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def propose(self, request, pk=None):
+        """El admin propone una nueva fecha/hora"""
+        booking = self.get_object()
+        proposed_date = request.data.get("proposed_date")
+        proposed_time_slot = request.data.get("proposed_time_slot")
+
+        if not proposed_date or not proposed_time_slot:
+            return Response({"error": "Debes proporcionar fecha y horario"}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = "proposed"
+        booking.proposed_date = proposed_date
+        booking.proposed_time_slot = proposed_time_slot
+        booking.save()
+        return Response({"message": "Propuesta enviada"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsTenant])
+    def accept_proposal(self, request, pk=None):
+        """El usuario acepta la propuesta del admin"""
+        booking = self.get_object()
+        if booking.status != "proposed":
+            return Response({"error": "No hay propuesta pendiente para aceptar"}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = "approved"
+        booking.save()
+        return Response({"message": "Propuesta aceptada y reserva aprobada"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsTenant])
+    def counter_proposal(self, request, pk=None):
+        """El usuario envía una contrapropuesta"""
+        booking = self.get_object()
+        counter_date = request.data.get("counter_proposal_date")
+        counter_time_slot = request.data.get("counter_proposal_time_slot")
+
+        if not counter_date or not counter_time_slot:
+            return Response({"error": "Debes proporcionar fecha y horario"}, status=status.HTTP_400_BAD_REQUEST)
+
+        booking.status = "counter_proposal"
+        booking.counter_proposal_date = counter_date
+        booking.counter_proposal_time_slot = counter_time_slot
+        booking.save()
+        return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
 
 # Respuesta asi los dashboardfrom rest_framework.views import APIView
 

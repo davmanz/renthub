@@ -4,6 +4,7 @@ const endpoints = {
   auth: {
     login: `${API_BASE}/token/`,
     me: `${API_BASE}/users/me/`,
+    refresh: `${API_BASE}/refresh/`
     
   },
 
@@ -34,6 +35,12 @@ const endpoints = {
     unverified: `${API_BASE}/payments/unverified/`,
     rental: `${API_BASE}/payments/rental/`,
     laundry: `${API_BASE}/payments/laundry/`,
+  },
+  laundry: {
+    getBookings: `${API_BASE}/laundry-bookings/`, // Obtener reservas de lavandería
+    createBooking: `${API_BASE}/laundry-bookings/`, // Crear una nueva reserva
+    acceptProposal: (id: string) => `${API_BASE}/laundry-bookings/${id}/accept-proposal/`, // Aceptar propuesta del admin
+    counterProposal: (id: string) => `${API_BASE}/laundry-bookings/${id}/counter-proposal/`, // Enviar contrapropuesta
   },
 };
 

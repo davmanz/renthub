@@ -9,7 +9,7 @@ from core.views import (CustomUserViewSet, ContractViewSet,
                         BuildingViewSet, ReferencePersonViewSet,
                         UserDashboardView, AdminDashboardView,
                         LaundryDashboardView, PaymentDetailView,
-                        DocumentTypesViewSet)
+                        DocumentTypesViewSet, LaundryBookingViewSet)
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -23,6 +23,7 @@ router.register(r'rooms', RoomViewSet)
 router.register(r'buildings', BuildingViewSet)
 router.register(r'references', ReferencePersonViewSet)
 router.register(r'document-types', DocumentTypesViewSet)
+router.register(r"laundry-bookings", LaundryBookingViewSet, basename="laundry-bookings")
 
 
 urlpatterns = [

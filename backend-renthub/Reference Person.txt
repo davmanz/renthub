@@ -1,8 +1,0 @@
-from core.models import ReferencePerson
-
-document_type = DocumentType.objects.get(id="ecd7eab5-30ed-4873-99bb-6cb46aaf4258")
-
-ReferencePerson.objects.create(first_name="Jonatan",last_name="Escalona",document_number="19647577",phone_number="998525463",document_type=document_type)
-
-ReferencePerson.objects.create(first_name="Marcos",last_name="Rivero",document_number="177535741",phone_number="914936524",document_type=document_type)
-

@@ -1,4 +1,5 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import endpoints from "../api/endpoints";
@@ -21,6 +22,7 @@ interface AdminLayoutProps {
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
   const [userName, setUserName] = useState("");
 
   useEffect(() => {
@@ -36,12 +38,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
     fetchUser();
   }, [navigate]);
-
-  const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    navigate("/login");
-  };
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>

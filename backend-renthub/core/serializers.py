@@ -95,7 +95,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 class LaundryBookingSerializer(serializers.ModelSerializer):
     class Meta:
         model = LaundryBooking
-        fields = "__all__"
+        exclude = ["user"]
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:

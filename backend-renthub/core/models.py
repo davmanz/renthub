@@ -1,12 +1,41 @@
 import uuid
+import os
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
+
+# Personalizacion de Creacion de SuperUsers
 def create_superuser(self, email, password=None, **extra_fields):
     extra_fields.setdefault("is_staff", True)
     extra_fields.setdefault("is_superuser", True)
     extra_fields.setdefault("role", "superadmin") 
     return self.create_user(email, password, **extra_fields)
+
+####################################################################
+#Adecuacion de carga de imagenes
+ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif"]
+MAX_FILE_SIZE_MB = 5  # Tamaño máximo permitido en MB
+
+def validate_image_file(value):
+    """Valida que el archivo sea una imagen permitida y no exceda el tamaño máximo"""
+    ext = value.name.split(".")[-1].lower()  # Obtiene la extensión del archivo
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValidationError(f"Formato no permitido: {ext}. Solo se permiten {', '.join(ALLOWED_IMAGE_EXTENSIONS)}.")
+
+    # Validar tamaño del archivo
+    file_size = value.size
+    max_size_bytes = MAX_FILE_SIZE_MB * 1024 * 1024  # Convertir MB a bytes
+    if file_size > max_size_bytes:
+        raise ValidationError(f"El archivo es demasiado grande. Máximo permitido: {MAX_FILE_SIZE_MB}MB.")
+
+def laundry_voucher_upload_path(instance, filename):
+    """Genera un nombre de archivo único basado en UUID"""
+    ext = filename.split('.')[-1].lower()  # Obtiene la extensión del archivo y la convierte a minúsculas
+    unique_filename = f"{uuid.uuid4().hex}.{ext}"  # Genera un UUID como nombre del archivo
+    return os.path.join("laundry/vouchers/", unique_filename)
+
+####################################################################
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -162,6 +191,7 @@ class ReferencePerson(models.Model):
         return f"{self.first_name} {self.last_name} ({self.document_number})"
 
 class LaundryBooking(models.Model):
+    
     STATUS_CHOICES = [
         ("pending", "Pendiente"),
         ("approved", "Aprobado"),
@@ -178,10 +208,14 @@ class LaundryBooking(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="laundry_bookings")
-    room = models.ForeignKey(Room, on_delete=models.CASCADE)
     date = models.DateField()
     time_slot = models.CharField(max_length=20)  # Ejemplo: "08:00-10:00"
-    voucher_image = models.ImageField(upload_to="laundry/vouchers/", blank=False, null=False)
+    voucher_image = models.ImageField(
+        upload_to=laundry_voucher_upload_path,
+        blank=False,
+        null=False,
+        validators=[validate_image_file]  # Aplicar la validación personalizada
+    )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     admin = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_laundry_bookings")

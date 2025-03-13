@@ -1,15 +1,28 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
 import api from "../api/api";
 import endpoints from "../api/endpoints";
-import { Container, Paper, Typography, CircularProgress, Alert, Avatar, Tabs, Tab, Box } from "@mui/material";
-import UploadPaymentModal from "./modalsUserDashboard/UploadPaymentModal";
+import {
+  Container,
+  Paper,
+  Typography,
+  CircularProgress,
+  Alert,
+  Avatar,
+  Tabs,
+  Tab,
+  Box,
+  Button,
+} from "@mui/material";
+import LaundryModal from "./modalsUserDashboard/LaundryModal"; // Importamos el modal
 
 const UserDashboard = () => {
+  const { logout } = useContext(AuthContext);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState(0);
+  const [openLaundryModal, setOpenLaundryModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -17,7 +30,6 @@ const UserDashboard = () => {
         const response = await api.get(endpoints.dashboard.user);
         setData(response.data);
       } catch (error: any) {
-        console.error("Error al obtener el dashboard", error);
         setError("Hubo un error al cargar los datos.");
       } finally {
         setLoading(false);
@@ -32,7 +44,6 @@ const UserDashboard = () => {
 
   return (
     <Container maxWidth="md" sx={{ mt: 4 }}>
-      {/* Contenedor del Header */}
       <Paper sx={{ padding: 3, bgcolor: "#1e1e1e", color: "white", display: "flex", alignItems: "center" }}>
         {/* Foto de Perfil */}
         <Avatar
@@ -49,6 +60,11 @@ const UserDashboard = () => {
             Teléfono: {data.user.phone_number}
           </Typography>
         </Box>
+
+        {/* Botón de Cerrar Sesión */}
+        <Button variant="contained" color="error" sx={{ ml: "auto" }} onClick={logout}>
+          Cerrar Sesión
+        </Button>
       </Paper>
 
       {/* Barra de Navegación */}
@@ -63,7 +79,7 @@ const UserDashboard = () => {
         <Tab label="Inicio" />
         <Tab label="Pagos Pendientes" />
         <Tab label="Historial de Pagos" />
-        <Tab label="Configuración" />
+        <Tab label="Lavandería" />
       </Tabs>
 
       {/* Contenido del Dashboard */}
@@ -75,38 +91,27 @@ const UserDashboard = () => {
           </>
         )}
 
-        {selectedTab === 1 && (
-          <>
-            <Typography variant="h6">Pagos Pendientes</Typography>
-            {data.payments_pending.length > 0 ? (
-              data.payments_pending.map((payment: any) => (
-                <Typography key={payment.id} variant="body1">
-                  - {payment.month_paid} (Vence: {payment.payment_date})
-                </Typography>
-              ))
-            ) : (
-              <Typography>No tienes pagos pendientes.</Typography>
-            )}
-          </>
-        )}
-
-        {selectedTab === 2 && (
-          <>
-            <Typography variant="h6">Historial de Pagos</Typography>
-            <Typography variant="body1">Aquí se mostrará el historial de pagos (por implementar).</Typography>
-          </>
-        )}
-
         {selectedTab === 3 && (
           <>
-            <Typography variant="h6">Configuración</Typography>
-            <Typography variant="body1">Opciones de usuario (por implementar).</Typography>
+            <Typography variant="h6">Reservas de Lavandería</Typography>
+            {data.laundry_booking ? (
+              <>
+                <Typography variant="body1">Fecha: {data.laundry_booking.date}</Typography>
+                <Typography variant="body1">Horario: {data.laundry_booking.time_slot}</Typography>
+                <Typography variant="body1">Estado: {data.laundry_booking.status}</Typography>
+              </>
+            ) : (
+              <Typography>No tienes reservas activas.</Typography>
+            )}
+            <Button variant="contained" sx={{ mt: 2 }} onClick={() => setOpenLaundryModal(true)}>
+              Gestionar Reserva
+            </Button>
           </>
         )}
       </Paper>
 
-      {/* Modal para subir comprobantes */}
-      <UploadPaymentModal open={modalOpen} onClose={() => setModalOpen(false)} nextPayment={data.next_payment?.next_month} />
+      {/* Modal para gestionar lavandería */}
+      <LaundryModal open={openLaundryModal} handleClose={() => setOpenLaundryModal(false)} />
     </Container>
   );
 };
