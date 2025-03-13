@@ -296,21 +296,6 @@ class UserDashboardView(APIView):
     def get(self, request):
         user = request.user
 
-        payments_pending = PaymentHistory.objects.filter(
-            contract__user=user, status="pending"
-        ).values("id", "month_paid", "payment_date")
-
-        next_payment = (
-            PaymentHistory.objects.filter(contract__user=user)
-            .order_by("payment_date")
-            .values("month_paid")
-            .first()
-        )
-
-        payment_periods = PaymentHistory.objects.filter(
-            contract__user=user
-        ).values_list("month_paid", flat=True)
-
         # Información del usuario
         user_data = {
             "first_name": user.first_name,
@@ -320,12 +305,34 @@ class UserDashboardView(APIView):
             "profile_photo": request.build_absolute_uri(user.profile_photo.url) if user.profile_photo else None,
         }
 
+        # Datos de pagos
+        payments = {
+            "pending": list(PaymentHistory.objects.filter(
+                contract__user=user, status="pending"
+            ).values("id", "month_paid", "payment_date")),
+            "next_due": PaymentHistory.objects.filter(
+                contract__user=user
+            ).order_by("payment_date").values("month_paid").first(),
+            "history": list(PaymentHistory.objects.filter(
+                contract__user=user
+            ).values_list("month_paid", flat=True))
+        }
+
+        # Datos de lavandería
+        laundry = {
+            "bookings": list(LaundryBooking.objects.filter(user=user).values(
+                "id", "date", "time_slot", "status",
+                "proposed_date", "proposed_time_slot",
+                "counter_proposal_date", "counter_proposal_time_slot",
+                "admin_comment"
+            ))
+        }
+
         return Response(
             {
                 "user": user_data, 
-                "payments_pending": list(payments_pending),
-                "next_payment": next_payment,
-                "payment_periods": list(payment_periods),
+                "payments": payments,
+                "laundry": laundry
             },
             status=status.HTTP_200_OK,
         )
