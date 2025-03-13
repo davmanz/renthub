@@ -16,6 +16,9 @@ class ReferencePersonSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class CustomUserSerializer(serializers.ModelSerializer):
+
+    password = serializers.CharField(write_only=True)
+
     reference_1 = serializers.PrimaryKeyRelatedField(
         queryset=ReferencePerson.objects.all(), required=False, allow_null=True)
       
