@@ -5,28 +5,19 @@ import { useEffect, useState } from "react";
 import {
   Container,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
   CircularProgress,
   Alert,
-  Typography,
-  Button,
-  Modal,
-  TextField,
 } from "@mui/material";
+import { BarChart } from "@mui/x-charts/BarChart";
 
 const AdminDashboard = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openModal, setOpenModal] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState<any>(null);
-  const [proposal, setProposal] = useState({ proposed_date: "", proposed_time_slot: "" });
-  const [rejectionComment, setRejectionComment] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,29 +35,12 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
-  const handleApprove = async (bookingId: string) => {
-    await api.post(`${endpoints.laundryBookings}/${bookingId}/approve`);
-    window.location.reload();
-  };
-
-  const handleReject = async () => {
-    if (!selectedBooking) return;
-    await api.post(`${endpoints.laundryBookings}/${selectedBooking.id}/reject`, { admin_comment: rejectionComment });
-    setOpenModal(false);
-    window.location.reload();
-  };
-
-  const handlePropose = async () => {
-    if (!selectedBooking) return;
-    await api.post(`${endpoints.laundryBookings}/${selectedBooking.id}/propose`, proposal);
-    setOpenModal(false);
-    window.location.reload();
-  };
-
   if (loading) {
     return (
       <AdminLayout>
-        <CircularProgress />
+        <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
+          <CircularProgress />
+        </Container>
       </AdminLayout>
     );
   }
@@ -74,75 +48,58 @@ const AdminDashboard = () => {
   if (error) {
     return (
       <AdminLayout>
-        <Alert severity="error">{error}</Alert>
+        <Container maxWidth="lg">
+          <Alert severity="error">{error}</Alert>
+        </Container>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <Container maxWidth="lg">
-        <Typography variant="h4" sx={{ mt: 3, mb: 2, color: "#1976d2" }}>
-          Gestión de Reservas de Lavandería
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Typography variant="h4" sx={{ mb: 3, color: "#1976d2" }}>
+          Resumen General
         </Typography>
 
-        <TableContainer component={Paper} sx={{ mb: 3 }}>
-          <Table>
-            <TableHead sx={{ bgcolor: "#1976d2" }}>
-              <TableRow>
-                <TableCell sx={{ color: "white" }}>Usuario</TableCell>
-                <TableCell sx={{ color: "white" }}>Fecha</TableCell>
-                <TableCell sx={{ color: "white" }}>Horario</TableCell>
-                <TableCell sx={{ color: "white" }}>Estado</TableCell>
-                <TableCell sx={{ color: "white" }}>Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data?.washing_payments?.map((booking: any) => (
-                <TableRow key={booking.id} hover>
-                  <TableCell>{booking.contract__user__first_name} {booking.contract__user__last_name}</TableCell>
-                  <TableCell>{booking.month_paid}</TableCell>
-                  <TableCell>{booking.payment_date}</TableCell>
-                  <TableCell>{booking.status}</TableCell>
-                  <TableCell>
-                    {booking.status === "pending" && (
-                      <>
-                        <Button variant="contained" color="success" onClick={() => handleApprove(booking.id)}>Aprobar</Button>
-                        <Button variant="contained" color="warning" onClick={() => { setSelectedBooking(booking); setOpenModal(true); }}>Proponer</Button>
-                        <Button variant="contained" color="error" onClick={() => { setSelectedBooking(booking); setOpenModal(true); }}>Rechazar</Button>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{ backgroundColor: "#e3f2fd" }}>
+              <CardContent>
+                <Typography variant="h6">Pagos Pendientes</Typography>
+                <Typography variant="h4">{data?.pending_payments ?? 0}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
 
-        {/* Modal para rechazo o propuesta */}
-        <Modal open={openModal} onClose={() => setOpenModal(false)}>
-          <Paper sx={{ padding: 4, maxWidth: 400, margin: "auto", mt: 5 }}>
-            {selectedBooking && (
-              <>
-                <Typography variant="h6">Gestión de Reserva</Typography>
-                {selectedBooking.status === "pending" ? (
-                  <>
-                    <Typography variant="body1">Proponer un nuevo horario:</Typography>
-                    <TextField fullWidth label="Nueva Fecha" type="date" value={proposal.proposed_date} onChange={(e) => setProposal({ ...proposal, proposed_date: e.target.value })} sx={{ mt: 2 }} />
-                    <TextField fullWidth label="Nuevo Horario" value={proposal.proposed_time_slot} onChange={(e) => setProposal({ ...proposal, proposed_time_slot: e.target.value })} sx={{ mt: 2 }} />
-                    <Button variant="contained" sx={{ mt: 2 }} onClick={handlePropose}>Enviar Propuesta</Button>
-                  </>
-                ) : (
-                  <>
-                    <Typography variant="body1">Motivo del rechazo:</Typography>
-                    <TextField fullWidth multiline rows={3} value={rejectionComment} onChange={(e) => setRejectionComment(e.target.value)} sx={{ mt: 2 }} />
-                    <Button variant="contained" color="error" sx={{ mt: 2 }} onClick={handleReject}>Rechazar</Button>
-                  </>
-                )}
-              </>
-            )}
-          </Paper>
-        </Modal>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{ backgroundColor: "#c8e6c9" }}>
+              <CardContent>
+                <Typography variant="h6">Pagos Aprobados</Typography>
+                <Typography variant="h4">{data?.approved_payments ?? 0}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={4}>
+            <Card sx={{ backgroundColor: "#ffccbc" }}>
+              <CardContent>
+                <Typography variant="h6">Reservas de Lavandería</Typography>
+                <Typography variant="h4">{data?.laundry_reservations ?? 0}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Paper sx={{ mt: 4, p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Historial de Pagos Mensuales</Typography>
+          <BarChart
+            xAxis={[{ scaleType: "band", data: data?.monthly_payments?.months || [] }]}
+            series={[{ data: data?.monthly_payments?.values || [] }]}
+            width={600}
+            height={300}
+          />
+        </Paper>
       </Container>
     </AdminLayout>
   );

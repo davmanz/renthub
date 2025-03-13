@@ -59,8 +59,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             </ListItem>
 
             {/* Crecion de Usuarios */}
-            <ListItem component="button" onClick={() => navigate("/dashboard/admin/create-tenant")}>
-                <ListItemText primary="Crear Usuario Tenant" />
+            <ListItem component="button" onClick={() => navigate("/dashboard/admin/users")}>
+                <ListItemText primary="Gestion de Usuarios" />
             </ListItem>
 
             {/* Crecion de Contratos */}

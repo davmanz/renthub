@@ -7,8 +7,8 @@ import {
   TextField,
   Button,
 } from "@mui/material";
-import api from "../../../api/api";
-import endpoints from "../../../api/endpoints";
+import api from "../../../../api/api";
+import endpoints from "../../../../api/endpoints";
 
 interface CreateReferenceModalProps {
   open: boolean;
@@ -23,7 +23,7 @@ const CreateReferenceModal: React.FC<CreateReferenceModalProps> = ({ open, onClo
   const handleCreateReference = async () => {
     try {
       setLoading(true);
-      const response = await api.post(endpoints.createUsers.createReference, newReference);
+      const response = await api.post(endpoints.userManagement.referencePerson, newReference);
       onReferenceCreated(response.data); // Enviar la nueva referencia al componente padre
       onClose();
     } catch (err) {

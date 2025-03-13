@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
-import SelectUserModal from "./modalsCreateContract/SelectUserModal";
-import SelectRoomModal from "./modalsCreateContract/SelectRoomModal";
+import SelectUserModal from "./modals/CreateContract/SelectUserModal";
+import SelectRoomModal from "./modals/CreateContract/SelectRoomModal";
 import {
   TextField,
   Button,

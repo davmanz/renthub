@@ -1,6 +1,6 @@
 import { useState } from "react";
-import api from "../../../api/api";
-import endpoints from "../../../api/endpoints";
+import api from "../../../../api/api";
+import endpoints from "../../../../api/endpoints";
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Alert } from "@mui/material";
 
 const CreateBuildingModal = ({ open, onClose, refreshBuildings }) => {

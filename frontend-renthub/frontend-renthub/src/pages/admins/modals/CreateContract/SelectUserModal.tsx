@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../../../api/api";
-import endpoints from "../../../api/endpoints";
+import api from "../../../../api/api";
+import endpoints from "../../../../api/endpoints";
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, List, ListItem, Button } from "@mui/material";
 
 const SelectUserModal = ({ open, onClose, onSelect }) => {

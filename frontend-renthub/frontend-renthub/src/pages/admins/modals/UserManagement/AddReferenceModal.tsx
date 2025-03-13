@@ -12,8 +12,8 @@ import {
     FormControl, 
     InputLabel 
 } from "@mui/material";
-import api from "../../../api/api";
-import endpoints from "../../../api/endpoints";
+import api from "../../../../api/api";
+import endpoints from "../../../../api/endpoints";
 
 interface AddReferenceModalProps {
   open: boolean;
@@ -37,7 +37,7 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
   useEffect(() => {
     const fetchDocumentTypes = async () => {
       try {
-        const response = await api.get(endpoints.createUsers.documentTypes);
+        const response = await api.get(endpoints.userManagement.documentTypes);
         setDocumentTypes(response.data);
       } catch (err) {
         console.error("Error al obtener los tipos de documento", err);
@@ -56,7 +56,7 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
     setError("");
 
     try {        
-        const response = await api.post(endpoints.createUsers.referencePerson, formData);
+        const response = await api.post(endpoints.userManagement.referencePerson, formData);
 
         if (response.status === 201) {
             
