@@ -14,8 +14,7 @@ const endpoints = {
     referencePerson: `${API_BASE}/references/` 
   },
 
-  createContract:{
-    users: `${API_BASE}/users/`,
+  contractManagement:{
     rommsAvaible: `${API_BASE}/rooms/available/`,
     contracts: `${API_BASE}/contracts/`
   },

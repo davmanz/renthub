@@ -5,7 +5,7 @@ import Login from "../pages/Login";
 import UserDashboard from "../pages/users/UserDashboard";
 import AdminDashboard from "../pages/admins/AdminDashboard";
 import UserManagement from "../pages/admins/UserManagement";
-import CreateContract from "../pages/admins/CreateContract";
+import ContractManagement from "../pages/admins/ContractManagement.tsx";
 import Sites from "../pages/admins/Sites";
 import NotFound from "../pages/NotFound";
 
@@ -23,7 +23,7 @@ const AppRoutes = () => {
         <Route path="/dashboard/user" element={<ProtectedRoute element={<UserDashboard />} />} />
         <Route path="/dashboard/admin" element={<ProtectedRoute element={<AdminDashboard />} />} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute element={<UserManagement />} />} />
-        <Route path="/dashboard/admin/create-contract" element={<ProtectedRoute element={<CreateContract />} />} />
+        <Route path="/dashboard/admin/contract" element={<ProtectedRoute element={<ContractManagement />} />} />
         <Route path="/dashboard/admin/create-sites" element={<ProtectedRoute element={<Sites />} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

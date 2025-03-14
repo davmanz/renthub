@@ -20,7 +20,7 @@ const SelectRoomModal = ({ open, onClose, onSelect }) => {
     if (selectedBuilding) {
       setSelectedRoom(null);  // Limpiar selección de room si cambia el building
       setRooms([]);  // Limpiar habitaciones antes de la nueva carga
-      api.get(`${endpoints.createContract.rommsAvaible}?building_id=${selectedBuilding}`)
+      api.get(`${endpoints.contractManagement.rommsAvaible}?building_id=${selectedBuilding}`)
         .then(response => setRooms(response.data))
         .catch(console.error);
     }

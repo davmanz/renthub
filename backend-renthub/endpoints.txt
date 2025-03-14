@@ -3,7 +3,7 @@
 Ruta: POST /api/users/
 JSON de solicitud:
 
-json
+
 
 
 {
@@ -23,7 +23,7 @@ json
 }
 JSON de respuesta:
 
-json
+
 
 
 {
@@ -48,7 +48,7 @@ json
 Ruta: GET /api/users/ Parámetros opcionales: ?role=tenant
 JSON de respuesta:
 
-json
+
 
 
 [
@@ -80,7 +80,7 @@ JSON de respuesta:
 Ruta: POST /api/token/
 JSON de solicitud:
 
-json
+
 
 
 {
@@ -89,7 +89,7 @@ json
 }
 JSON de respuesta:
 
-json
+
 
 
 {
@@ -100,7 +100,7 @@ json
 Ruta: POST /api/token/refresh/
 JSON de solicitud:
 
-json
+
 
 
 {
@@ -108,7 +108,7 @@ json
 }
 JSON de respuesta:
 
-json
+
 
 
 {
@@ -119,10 +119,6 @@ json
 3.1 Crear Contrato
 Ruta: POST /api/contracts/
 JSON de solicitud:
-
-json
-
-
 {
   "user": "uuid-usuario",
   "room": "uuid-habitación",
@@ -133,15 +129,30 @@ json
   "includes_wifi": true,
   "wifi_cost": 20.00
 }
+
+
 JSON de respuesta:
-
-json
-
-
 {
   "id": "uuid",
   "user": "uuid-usuario",
   "room": "uuid-habitación",
+  "start_date": "2025-01-01",
+  "end_date": "2025-12-31",
+  "rent_amount": 500.00,
+  "deposit_amount": 200.00,
+  "includes_wifi": true,
+  "wifi_cost": 20.00
+}
+
+GET
+
+{
+  "id": "uuid",
+  "user": "uuid-usuario",
+  "user_full_name": "Juan Pérez",
+  "room": "uuid-habitación",
+  "room_number": "101",
+  "building_name": "Edificio Central",
   "start_date": "2025-01-01",
   "end_date": "2025-12-31",
   "rent_amount": 500.00,
@@ -154,7 +165,7 @@ json
 4.1 Obtener Historial de Pagos
 Ruta: GET /api/payments/ JSON de respuesta:
 
-json
+
 
 
 [
@@ -176,7 +187,7 @@ Ruta: GET /api/payments/{uuid}/ JSON de respuesta: Igual que el historial.
 5.1 Obtener habitaciones disponibles
 Ruta: GET /api/rooms/available/ Parámetros opcionales: ?building_id=uuid JSON de respuesta:
 
-json
+
 
 
 [
@@ -191,7 +202,7 @@ json
 5.2 Obtener lista de edificios
 Ruta: GET /api/buildings/ JSON de respuesta:
 
-json
+
 
 
 [
@@ -206,7 +217,7 @@ json
 6.1 Reservar Lavadora
 Ruta: POST /api/laundry-bookings/ JSON de solicitud:
 
-json
+
 
 
 {
@@ -216,7 +227,7 @@ json
 }
 JSON de respuesta:
 
-json
+
 
 
 {
@@ -230,20 +241,20 @@ json
 6.2 Aprobar Reserva (Admin)
 Ruta: POST /api/laundry-bookings/{uuid}/approve/ JSON de respuesta:
 
-json
+
 
 
 {"message": "Reserva aprobada"}
 6.3 Rechazar Reserva con Comentario
 Ruta: POST /api/laundry-bookings/{uuid}/reject/ JSON de solicitud:
 
-json
+
 
 
 {"admin_comment": "Motivo de rechazo"}
 JSON de respuesta:
 
-json
+
 
 
 {"message": "Reserva rechazada"}
@@ -252,7 +263,7 @@ json
 7.1 Dashboard de Usuario
 Ruta: GET /api/user-dashboard/ JSON de respuesta:
 
-json
+
 
 
 {

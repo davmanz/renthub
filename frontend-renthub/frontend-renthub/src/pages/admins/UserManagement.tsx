@@ -34,7 +34,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get(endpoints.createUsers.createUser);
+      const response = await api.get(endpoints.userManagement.user);
       setUsers(response.data);
     } catch (err) {
       setError("Error al cargar usuarios");
@@ -45,12 +45,12 @@ const UserManagement = () => {
 
   const handleDelete = async (userId) => {
     if (!window.confirm("¿Seguro que deseas eliminar este usuario permanentemente?")) return;
-    await api.delete(`${endpoints.users.delete}/${userId}`);
+    await api.delete(`${endpoints.userManagement.user}/${userId}`);
     fetchUsers();
   };
 
   const handleToggleActive = async (userId, isActive) => {
-    await api.patch(`${endpoints.users.toggle}/${userId}`, { active: !isActive });
+    await api.patch(`${endpoints.userManagement.user}/${userId}`, { active: !isActive });
     fetchUsers();
   };
 

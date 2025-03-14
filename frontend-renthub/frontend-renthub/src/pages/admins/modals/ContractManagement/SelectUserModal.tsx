@@ -10,7 +10,7 @@ const SelectUserModal = ({ open, onClose, onSelect }) => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    api.get(endpoints.createContract.users).then(response => setUsers(response.data)).catch(console.error);
+    api.get(endpoints.userManagement.user).then(response => setUsers(response.data)).catch(console.error);
   }, []);
 
   return (

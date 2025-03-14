@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from datetime import datetime
 from core.models import (CustomUser, 
                          Contract, 
                          PaymentHistory, 
@@ -6,7 +7,6 @@ from core.models import (CustomUser,
                          ReferencePerson,
                          LaundryBooking, DocumentType
                          )
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from core.models import Contract, PaymentHistory
 
@@ -52,9 +52,32 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 class ContractSerializer(serializers.ModelSerializer):
+
+    user_full_name = serializers.SerializerMethodField()
+    room_number = serializers.CharField(source="room.room_number", read_only=True)
+    building_name = serializers.CharField(source="room.building.name", read_only=True)
+    is_overdue = serializers.SerializerMethodField()
+
     class Meta:
         model = Contract
-        fields = "__all__"
+        fields = [
+            "id", "user", "user_full_name", "room", "room_number", "building_name",
+            "start_date", "end_date", "rent_amount", "deposit_amount", 
+            "includes_wifi", "wifi_cost", "is_overdue"
+        ]
+
+    def get_user_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+    
+    def get_is_overdue(self, obj):
+        """Determina si el contrato tiene pagos vencidos"""
+        today = datetime.today()
+        current_year_month = f"{today.year}-{today.month:02d}"  # Formato 'YYYY-MM'
+
+        return obj.payments.filter(
+            status="pending",
+            month_paid__lte=current_year_month
+        ).exists()
 
     def create(self, validated_data):
         """ Crea un contrato y genera automáticamente los pagos en PaymentHistory """
@@ -75,7 +98,6 @@ class ContractSerializer(serializers.ModelSerializer):
             current_date += relativedelta(months=1)  # Avanza un mes
 
         return contract
-
 
 class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
