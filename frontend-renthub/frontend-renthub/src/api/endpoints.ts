@@ -21,7 +21,7 @@ const endpoints = {
 
   createSites:{
     rooms: `${API_BASE}/rooms/`,
-    rooms_id: `${API_BASE}/rooms/available/?building_id`,
+    rooms_id: `${API_BASE}/rooms/available/?building_id/`,
     building: `${API_BASE}/buildings/`
   },
 

@@ -45,12 +45,12 @@ const UserManagement = () => {
 
   const handleDelete = async (userId) => {
     if (!window.confirm("¿Seguro que deseas eliminar este usuario permanentemente?")) return;
-    await api.delete(`${endpoints.userManagement.user}/${userId}`);
+    await api.delete(`${endpoints.userManagement.user}${userId}`);
     fetchUsers();
   };
 
   const handleToggleActive = async (userId, isActive) => {
-    await api.patch(`${endpoints.userManagement.user}/${userId}`, { active: !isActive });
+    await api.patch(`${endpoints.userManagement.user}${userId}`, { active: !isActive });
     fetchUsers();
   };
 
