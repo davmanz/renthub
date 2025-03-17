@@ -33,7 +33,7 @@ const SitesManagement = () => {
 
   const fetchBuildings = async () => {
     try {
-      const response = await api.get(endpoints.createSites.building);
+      const response = await api.get(endpoints.siteManagement.building);
       setBuildings(response.data);
     } catch (error) {
       console.error("Error al obtener buildings", error);
@@ -42,7 +42,8 @@ const SitesManagement = () => {
 
   const fetchRooms = async (buildingId) => {
     try {
-      const response = await api.get(`${endpoints.createSites.rooms_id}=${buildingId}`);
+      const response = await api.get(endpoints.siteManagement.buildingRooms(buildingId));
+      console.log(response);
       setRooms(response.data);
     } catch (error) {
       console.error("Error al obtener rooms", error);
@@ -115,8 +116,8 @@ const SitesManagement = () => {
                       <TableCell>{room.room_number}</TableCell>
                       <TableCell>
                         <Chip 
-                          label={room.is_available ? "Disponible" : "Ocupada"} 
-                          color={room.is_available ? "success" : "error"} 
+                          label={room.is_occupied ? "Ocupada" : "Disponible"} 
+                          color={room.is_occupied ? "error" : "success"} 
                           variant="outlined"
                         />
                       </TableCell>

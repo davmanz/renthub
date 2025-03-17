@@ -70,7 +70,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
             {/* Crecion de Sitios */}
             <ListItem component="button" onClick={() => navigate("/dashboard/admin/sites")}>
-                <ListItemText primary="Crear Sitio" />
+                <ListItemText primary="Gestion de Sitios" />
+            </ListItem>
+
+            {/* Crecion de Sitios */}
+            <ListItem component="button" onClick={() => navigate("/dashboard/admin/laundry")}>
+                <ListItemText primary="Gestion de Lavanderia" />
             </ListItem>
 
           </List>

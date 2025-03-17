@@ -111,7 +111,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.role == "superadmin"
 
     def is_admin(self):
-        return self.role == "admin"
+        return self.role in ["admin"]
 
     def is_tenant(self):
         return self.role == "tenant"
@@ -134,6 +134,22 @@ class Contract(models.Model):
     wifi_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        """Verifica si la habitación está ocupada antes de crear el contrato"""
+        if self.room.is_occupied:
+            raise ValidationError(f"La habitación {self.room.room_number} ya está ocupada.")
+
+        self.room.is_occupied = True  # Marca la habitación como ocupada
+        self.room.save(update_fields=["is_occupied"])
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Libera la habitación cuando se elimina un contrato"""
+        if self.room:
+            self.room.is_occupied = False
+            self.room.save(update_fields=["is_occupied"])
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"Contrato {self.id} - {self.user.email} ({self.room.room_number})"
@@ -206,31 +222,39 @@ class LaundryBooking(models.Model):
         ("rejected", "Rechazada"),
     ]
 
+    LAST_ACTION_CHOICES = [
+        ("user", "Usuario"),
+        ("admin", "Administrador"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="laundry_bookings")
     date = models.DateField()
-    time_slot = models.CharField(max_length=20)  # Ejemplo: "08:00-10:00"
+    time_slot = models.CharField(max_length=20)
     voucher_image = models.ImageField(
         upload_to=laundry_voucher_upload_path,
         blank=False,
         null=False,
-        validators=[validate_image_file]  # Aplicar la validación personalizada
+        validators=[validate_image_file]
     )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     admin = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_laundry_bookings")
-    admin_comment = models.TextField(blank=True, null=True)  # Motivo de rechazo o propuesta
+    admin_comment = models.TextField(blank=True, null=True)
 
     # Propuesta del administrador
     proposed_date = models.DateField(blank=True, null=True)
     proposed_time_slot = models.CharField(max_length=20, blank=True, null=True)
 
     # Respuesta del usuario a la propuesta del admin
-    user_response = models.CharField(max_length=10, choices=USER_RESPONSE_CHOICES, default="pending")  
+    user_response = models.CharField(max_length=10, choices=USER_RESPONSE_CHOICES, default="pending")
 
     # Contrapropuesta del usuario
     counter_proposal_date = models.DateField(blank=True, null=True)
     counter_proposal_time_slot = models.CharField(max_length=20, blank=True, null=True)
+
+    # 🚀 Nuevo campo para identificar quién hizo la última acción
+    last_action_by = models.CharField(max_length=10, choices=LAST_ACTION_CHOICES, default="user")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

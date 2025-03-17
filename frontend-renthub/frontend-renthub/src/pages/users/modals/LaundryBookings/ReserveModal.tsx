@@ -1,6 +1,6 @@
 import { useState } from "react";
-import api from "../../../api/api";
-import endpoints from "../../../api/endpoints";
+import api from "../../../../api/api";
+import endpoints from "../../../../api/endpoints";
 import {
   Dialog,
   DialogTitle,
@@ -42,7 +42,7 @@ const LaundryModal = ({ open, handleClose }: LaundryModalProps) => {
     formData.append("voucher_image", voucher); // ✅ Asegurar que el archivo se adjunta correctamente
 
     try {
-      const response = await api.post(endpoints.laundry.createBooking, formData, {
+      const response = await api.post(endpoints.laundryManagement.create, formData, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access")}`,
           "Content-Type": "multipart/form-data", // ✅ Asegurar que el servidor lo procese correctamente

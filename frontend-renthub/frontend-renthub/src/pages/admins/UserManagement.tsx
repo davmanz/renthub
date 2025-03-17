@@ -3,6 +3,7 @@ import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
 import UserModal from "./modals/UserManagement/CreateUser";
+import { User } from "../../types/types";
 import {
   Container,
   Paper,
@@ -21,7 +22,7 @@ import {
 import { Edit, Delete, PersonAdd } from "@mui/icons-material";
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,11 +50,37 @@ const UserManagement = () => {
     fetchUsers();
   };
 
-  const handleToggleActive = async (userId, isActive) => {
-    await api.patch(`${endpoints.userManagement.user}${userId}`, { active: !isActive });
-    fetchUsers();
+  const handleToggleActive = async (userId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const newState = event.target.checked; // Nuevo estado según el click en el switch
+  
+    // Actualizar el estado localmente antes de la llamada a la API
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user.id === userId ? { ...user, is_active: newState } : user
+      )
+    );
+  
+    try {
+      const response = await api.patch(endpoints.userManagement.userId(userId), { is_active: newState });
+  
+      if (response.status !== 200) {
+        throw new Error(`Error en la API: ${response.status}`);
+      }
+  
+      // No llamamos a fetchUsers() para evitar sobrescribir el cambio local
+    } catch (error) {
+      console.error("Error al actualizar usuario:", error);
+  
+      // Si la API falla, revertimos el cambio
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user.id === userId ? { ...user, is_active: !newState } : user
+        )
+      );
+    }
   };
-
+  
+  
   const handleEdit = (user) => {
     setSelectedUser(user);
     setOpenModal(true);
@@ -107,11 +134,11 @@ const UserManagement = () => {
                     <TableCell>{user.first_name} {user.last_name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Switch
-                        checked={user.is_active}
-                        onChange={() => handleToggleActive(user.id, user.active)}
-                        color="success"
-                      />
+                    <Switch
+                      checked={Boolean(user.is_active)}
+                      onChange={(event) => handleToggleActive(user.id, event)}
+                      color="success"
+                    />
                     </TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell>

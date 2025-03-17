@@ -10,6 +10,7 @@ const endpoints = {
 
   userManagement :{
     user: `${API_BASE}/users/`,
+    userId: (userId: string) => `${API_BASE}/users/${userId}/` ,
     documentTypes: `${API_BASE}/document-types/`,
     referencePerson: `${API_BASE}/references/` 
   },
@@ -19,10 +20,12 @@ const endpoints = {
     contracts: `${API_BASE}/contracts/`
   },
 
-  createSites:{
+  siteManagement: {
     rooms: `${API_BASE}/rooms/`,
-    rooms_id: `${API_BASE}/rooms/available/?building_id/`,
-    building: `${API_BASE}/buildings/`
+    building: `${API_BASE}/buildings/`,
+    buildingRooms: (buildingId: string) => `${API_BASE}/buildings/${buildingId}/rooms/`,
+    buildingRoomsAvailable: (buildingId: string) => `${API_BASE}/buildings/${buildingId}/rooms/available`,
+    buildingRoomsOccuped: (buildingId: string) => `${API_BASE}/buildings/${buildingId}/rooms/occupied`,
   },
 
   dashboard: {
@@ -35,12 +38,17 @@ const endpoints = {
     rental: `${API_BASE}/payments/rental/`,
     laundry: `${API_BASE}/payments/laundry/`,
   },
-  laundry: {
-    getBookings: `${API_BASE}/laundry-bookings/`, // Obtener reservas de lavandería
-    createBooking: `${API_BASE}/laundry-bookings/`, // Crear una nueva reserva
-    acceptProposal: (id: string) => `${API_BASE}/laundry-bookings/${id}/accept-proposal/`, // Aceptar propuesta del admin
-    counterProposal: (id: string) => `${API_BASE}/laundry-bookings/${id}/counter-proposal/`, // Enviar contrapropuesta
-  },
+
+  laundryManagement: {
+    list: "/laundry-bookings/",
+    create: "/laundry-bookings/",
+    detail: (bookingId: string) => `/laundry-bookings/${bookingId}/`,
+    approve: (bookingId: string) => `/laundry-bookings/${bookingId}/approve/`,
+    reject: (bookingId: string) => `/laundry-bookings/${bookingId}/reject/`,
+    propose: (bookingId: string) => `/laundry-bookings/${bookingId}/propose/`,
+    acceptProposal: (bookingId: string) => `/laundry-bookings/${bookingId}/accept_proposal/`,
+    counterProposal: (bookingId: string) => `/laundry-bookings/${bookingId}/counter_proposal/`,
+  }
 };
 
 export default endpoints;

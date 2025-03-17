@@ -45,7 +45,7 @@ const ContractManagement = () => {
 
   const handleDelete = async (contractId) => {
     if (!window.confirm("¿Seguro que deseas eliminar este contrato?")) return;
-    await api.delete(`${endpoints.contractManagement.contracts}/${contractId}`);
+    await api.delete(`${endpoints.contractManagement.contracts}${contractId}/`);
     fetchContracts();
   };
 

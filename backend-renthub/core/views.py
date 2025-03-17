@@ -172,11 +172,35 @@ class RoomViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(available_rooms, many=True)
         return Response(serializer.data)
 
-
 class BuildingViewSet(viewsets.ModelViewSet):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
-    permission_classes = [IsSuperAdmin]  # Solo Superadmins pueden gestionar edificios
+    permission_classes = [IsSuperAdmin]
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated], url_path="rooms")
+    def get_rooms(self, request, pk=None):
+        """Devuelve todas las habitaciones de un edificio"""
+        building = self.get_object()
+        rooms = Room.objects.filter(building=building)
+        serializer = RoomSerializer(rooms, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated], url_path="rooms/occupied")
+    def get_occupied_rooms(self, request, pk=None):
+        """Devuelve solo las habitaciones ocupadas de un edificio"""
+        building = self.get_object()
+        occupied_rooms = Room.objects.filter(building=building, is_occupied=True)
+        serializer = RoomSerializer(occupied_rooms, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated], url_path="rooms/available")
+    def get_available_rooms(self, request, pk=None):
+        """Devuelve solo las habitaciones desocupadas de un edificio"""
+        building = self.get_object()
+        unoccupied_rooms = Room.objects.filter(building=building, is_occupied=False)
+        serializer = RoomSerializer(unoccupied_rooms, many=True)
+        return Response(serializer.data)
+
 
 class ReferencePersonViewSet(viewsets.ModelViewSet):
     queryset = ReferencePerson.objects.all()
@@ -212,13 +236,13 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         """Filtra las reservas según el rol del usuario"""
         user = self.request.user
 
-        if user.is_admin():
-            return LaundryBooking.objects.filter(status="pending")
+        if user.is_admin() or user.is_superadmin():
+            return LaundryBooking.objects.all()
         return LaundryBooking.objects.filter(user=user)
 
     def create(self, request, *args, **kwargs):
         """Crear una nueva reserva con comprobante de pago (usuario)"""
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             serializer.save(user=request.user, status="pending")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -241,12 +265,17 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
             return Response({"error": "Se requiere un motivo de rechazo"}, status=status.HTTP_400_BAD_REQUEST)
 
         booking.status = "rejected"
+        booking.user_response = "rejected"
         booking.admin_comment = comment
         booking.save()
         return Response({"message": "Reserva rechazada"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def propose(self, request, pk=None):
+
+        user = self.request.user
+        action_user = "user" if user.role == "tenant" else "admin"
+
         """El admin propone una nueva fecha/hora"""
         booking = self.get_object()
         proposed_date = request.data.get("proposed_date")
@@ -258,6 +287,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.status = "proposed"
         booking.proposed_date = proposed_date
         booking.proposed_time_slot = proposed_time_slot
+        booking.last_action_by = action_user
         booking.save()
         return Response({"message": "Propuesta enviada"}, status=status.HTTP_200_OK)
 
@@ -274,6 +304,10 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsTenant])
     def counter_proposal(self, request, pk=None):
+
+        user = self.request.user
+        action_user = "user" if user.role == "tenant" else "admin"
+
         """El usuario envía una contrapropuesta"""
         booking = self.get_object()
         counter_date = request.data.get("counter_proposal_date")
@@ -285,6 +319,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.status = "counter_proposal"
         booking.counter_proposal_date = counter_date
         booking.counter_proposal_time_slot = counter_time_slot
+        booking.last_action_by = action_user
         booking.save()
         return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
 
