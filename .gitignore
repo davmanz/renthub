@@ -19,7 +19,7 @@ __pycache__/
 *.swp
 *.swo
 db.sqlite3
-/media/
+*/media/*
 /staticfiles/
 *.log
 *.pot
