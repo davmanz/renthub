@@ -1,5 +1,7 @@
 from rest_framework import serializers
+from django.db import transaction
 from datetime import datetime
+from django.core.exceptions import ValidationError
 from core.models import (CustomUser, 
                          Contract, 
                          PaymentHistory, 
@@ -14,7 +16,6 @@ class ReferencePersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReferencePerson
         fields = "__all__"
-
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
@@ -48,6 +49,15 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "reference_1", "reference_1_id",  # GET: Objeto | POST/PUT: ID
             "reference_2", "reference_2_id",  # GET: Objeto | POST/PUT: ID
         ]
+
+    def create(self, validated_data):
+        """Asegura que la contraseña se almacene hasheada"""
+        password = validated_data.pop("password", None)
+        user = CustomUser(**validated_data)
+        if password:
+            user.set_password(password)  # 🔹 Aquí se hashea la contraseña correctamente
+        user.save()
+        return user
 
     def get_document_type(self, obj):
         """ Devuelve el tipo de documento como un objeto con id y nombre """
@@ -93,7 +103,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class ContractSerializer(serializers.ModelSerializer):
-
     user_full_name = serializers.SerializerMethodField()
     room_number = serializers.CharField(source="room.room_number", read_only=True)
     building_name = serializers.CharField(source="room.building.name", read_only=True)
@@ -111,39 +120,64 @@ class ContractSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}"
     
     def get_is_overdue(self, obj):
-        """Determina si el contrato tiene pagos vencidos"""
+        """Determina si el contrato tiene pagos vencidos sin modificar la BD."""
         today = datetime.today()
-        current_year_month = f"{today.year}-{today.month:02d}"  # Formato 'YYYY-MM'
+        current_year_month = f"{today.year}-{today.month:02d}"
 
         return obj.payments.filter(
-            status="pending",
-            month_paid__lte=current_year_month
+            status__in=["overdue", "pending", "rejected"], month_paid__lte=current_year_month
         ).exists()
-
+    
     def create(self, validated_data):
-        """ Crea un contrato y genera automáticamente los pagos en PaymentHistory """
-        contract = Contract.objects.create(**validated_data)
+        """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
+        with transaction.atomic():  # 🔹 Bloquea la consulta para evitar condiciones de carrera
+            room = validated_data["room"]
 
-        start_date = contract.start_date
-        end_date = contract.end_date
-        current_date = start_date
+            # Bloquea la habitación durante la transacción
+            room = Room.objects.select_for_update().get(id=room.id)
 
-        # Generar un registro de pago para cada mes dentro del periodo del contrato
-        while current_date <= end_date:
-            PaymentHistory.objects.create(
-                contract=contract,
-                month_paid=current_date.strftime("%Y-%m"),
-                payment_date=current_date,
-                status="pending"  # Todos los pagos inician como pendientes
-            )
-            current_date += relativedelta(months=1)  # Avanza un mes
+            if Contract.objects.filter(room=room, end_date__gte=validated_data["start_date"]).exists():
+                raise ValidationError(f"La habitación {room.room_number} ya tiene un contrato activo.")
+
+            contract = Contract.objects.create(**validated_data)
+
+            start_date = contract.start_date
+            end_date = contract.end_date
+            current_date = start_date
+
+            while current_date <= end_date:
+                # Convertir la fecha actual a formato YYYY-MM para compararla con el mes actual
+                current_month = datetime.today().strftime("%Y-%m")
+                month_payment = current_date.strftime("%Y-%m")
+
+                # Si el mes de pago ya pasó, el estado debe ser "overdue", de lo contrario "pending"
+                payment_state = "overdue" if month_payment < current_month else "pending"
+
+                # Crear el registro en PaymentHistory con el estado correcto
+                PaymentHistory.objects.create(
+                    contract=contract,
+                    month_paid=month_payment,
+                    payment_date=current_date,
+                    status=payment_state
+                )
+
+                current_date += relativedelta(months=1)
 
         return contract
+
 
 class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentHistory
-        fields = "__all__"
+        fields = ["id", "contract", "month_paid", "receipt_image", "status", "payment_type", "payment_date"]
+        extra_kwargs = {
+            "payment_date": {"read_only": True}  # 🔹 Evita que el usuario envíe la fecha manualmente
+        }
+
+    def create(self, validated_data):
+        """Asigna la fecha actual al registrar un pago"""
+        validated_data["payment_date"] = datetime.today().date()  # 🔹 Fecha actual asignada automáticamente
+        return super().create(validated_data)
 
 class RoomSerializer(serializers.ModelSerializer):
     building_name = serializers.CharField(source="building.name", read_only=True)

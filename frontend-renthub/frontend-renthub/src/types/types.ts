@@ -71,22 +71,23 @@ export interface PaymentHistory {
   payment_type: "rent" | "washing";
 }
 
-export interface LaundryBooking {
+export type LaundryBookingResponse = {
   id: string;
-  user: string | User;
-  user_full_name: string,
-  date: string; // ISO Date
-  time_slot: string; // Ejemplo: "08:00-10:00"
-  voucher_image: string;
+  user: string;
+  userFullName: string;
+  date: string;  // Formato "YYYY-MM-DD"
+  timeSlot: string;  // Formato "HH:MM - HH:MM"
+  voucherImage: string;
   status: "pending" | "approved" | "rejected" | "proposed" | "counter_proposal";
-  admin?: string | User;
-  admin_comment?: string;
-  proposed_date?: string;
-  proposed_time_slot?: string;
-  user_response?: "pending" | "accepted" | "rejected";
-  counter_proposal_date?: string;
-  counter_proposal_time_slot?: string;
-}
+  adminComment?: string;
+  proposedDate?: string;
+  proposedTimeSlot?: string;
+  counterProposalDate?: string;
+  counterProposalTimeSlot?: string;
+  lastActionBy: "user" | "admin";
+  pendingAction?: "user" | "admin";
+};
+
 
 export interface UserDashboardResponse {
   user: {

@@ -3,6 +3,7 @@ import os
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from datetime import datetime
 
 
 # Personalizacion de Creacion de SuperUsers
@@ -122,37 +123,37 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="contracts")
-    room = models.ForeignKey("core.Room", on_delete=models.CASCADE, related_name="contracts")  # 👈 SOLUCIÓN
+    room = models.ForeignKey("core.Room", on_delete=models.CASCADE, related_name="contracts")  
 
     start_date = models.DateField()
     end_date = models.DateField()
-
-    # Datos financieros
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2)
     includes_wifi = models.BooleanField(default=False)
     wifi_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         """Verifica si la habitación está ocupada antes de crear el contrato"""
-        if self.room.is_occupied:
-            raise ValidationError(f"La habitación {self.room.room_number} ya está ocupada.")
+        if self._state.adding:  # Solo validar en creación, no en actualización
+            if Contract.objects.filter(room=self.room, end_date__gte=self.start_date).exists():
+                raise ValidationError(f"La habitación {self.room.room_number} ya tiene un contrato activo.")
 
-        self.room.is_occupied = True  # Marca la habitación como ocupada
+        super().save(*args, **kwargs)  # Guarda primero el contrato
+
+        # Ahora que el contrato está guardado, marcar la habitación como ocupada
+        self.room.is_occupied = True
         self.room.save(update_fields=["is_occupied"])
-        super().save(*args, **kwargs)
+
 
     def delete(self, *args, **kwargs):
-        """Libera la habitación cuando se elimina un contrato"""
-        if self.room:
+        """Libera la habitación solo si no hay otros contratos activos EN EL FUTURO."""
+        super().delete(*args, **kwargs)  # Primero elimina el contrato
+
+        # Si después de eliminar no quedan contratos activos en la habitación, se libera
+        if not Contract.objects.filter(room=self.room, end_date__gte=datetime.today().date()).exists():
             self.room.is_occupied = False
             self.room.save(update_fields=["is_occupied"])
-        super().delete(*args, **kwargs)
-
-    def __str__(self):
-        return f"Contrato {self.id} - {self.user.email} ({self.room.room_number})"
 
 class PaymentHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -161,12 +162,14 @@ class PaymentHistory(models.Model):
     month_paid = models.CharField(max_length=20)
     receipt_image = models.ImageField(upload_to="payments/receipts/", blank=True, null=True)
 
-    status_choices = [
-        ("valid", "Valid"),
-        ("rejected", "Rejected"),
-        ("pending", "Pending"),
-    ]
-    status = models.CharField(max_length=10, choices=status_choices, default="pending")
+    STATUS_CHOICES = [
+    ("overdue", "Vencido"),
+    ("pending_review", "En análisis"),
+    ("approved", "Aprobado"),
+    ("rejected", "Rechazado"),
+]
+    
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="overdue")
 
     PAYMENT_TYPES = [
         ("rent", "Rent Payment"),

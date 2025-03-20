@@ -6,7 +6,6 @@ import SelectUserModal from "./SelectUserModal";
 import SelectRoomModal from "./SelectRoomModal";
 
 const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }) => {
-  console.log("Modal abierto:", open, "Contrato a editar:", contractToEdit); // 🔥 Depuración
 
   const [formData, setFormData] = useState({
     user: "",

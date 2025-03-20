@@ -19,7 +19,7 @@ const CreateBuildingModal = ({ open, onClose, refreshBuildings }) => {
         address: address,
       };
 
-      const response = await api.post(endpoints.createSites.building, newBuilding);
+      const response = await api.post(endpoints.siteManagement.building, newBuilding);
 
       if (response.status === 201) {
         refreshBuildings();

@@ -23,6 +23,7 @@ import RejectLaundryModal from "./modals/LaundryManagement/RejectLaundryModal";
 import ViewVoucherModal from "./modals/LaundryManagement/ViewVoucherModal";
 import RejectionReasonModal from "./modals/LaundryManagement/RejectionReasonModal";
 
+
 const LaundryManagement = () => {
   const [requests, setRequests] = useState<LaundryBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,23 +41,13 @@ const LaundryManagement = () => {
   const fetchRequests = async () => {
     try {
       const response = await api.get(endpoints.laundryManagement.list);
+      console.log(response.data);
       setRequests(response.data);
     } catch (err) {
       setError("Error al cargar solicitudes de lavandería");
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusLabel = (request: LaundryBooking) => {
-    if (request.status === "pending") {
-      return request.user_response === "pending" ? "Pendiente por USR" : "Pendiente por AD";
-    }
-    if (request.status === "approved") return "Aprobado";
-    if (request.status === "rejected") return "Rechazado";
-    if (request.status === "proposed") return "Propuesta enviada";
-    if (request.status === "counter_proposal") return "Contrapropuesta enviada";
-    return "Desconocido";
   };
 
   const handleAccept = async (requestId: string) => {
@@ -67,7 +58,6 @@ const LaundryManagement = () => {
       console.error("Error al aprobar la solicitud:", error);
     }
   };
-  
 
   return (
     <AdminLayout>
@@ -91,30 +81,67 @@ const LaundryManagement = () => {
               {requests.map((request: LaundryBooking) => (
                 <TableRow key={request.id}>
                   <TableCell>{request.user_full_name}</TableCell>
-                  <TableCell>{request.date}</TableCell>
-                  <TableCell>{request.time_slot}</TableCell>
                   <TableCell>
-                    <Chip label={getStatusLabel(request)} color={
-                      request.status === "pending" ? "warning" :
-                      request.status === "approved" ? "success" :
-                      request.status === "rejected" ? "error" : "info"
-                    } variant="outlined" />
+                    {request.status === "counter_proposal"
+                      ? request.counter_proposal_date
+                      : request.status === "proposed"
+                      ? request.proposed_date
+                      : request.date}
+                  </TableCell>
+
+                  <TableCell>
+                    {request.status === "counter_proposal"
+                      ? request.counter_proposal_time_slot
+                      : request.status === "proposed"
+                      ? request.proposed_time_slot
+                      : request.time_slot}
                   </TableCell>
                   <TableCell>
-                    <IconButton color="primary" onClick={() => { setSelectedRequest(request); setOpenVoucherModal(true); }}>
-                      <Visibility />
-                    </IconButton>
-                    {request.status === "pending" && (
+                    <Chip
+                      label={
+                        request.status === "approved"
+                          ? "Aprobado"
+                          : request.status === "rejected"
+                          ? "Rechazado"
+                          : request.pending_action === "admin"
+                          ? "Pendiente Adm"
+                          : "Pendiente Usr"
+                      }
+                      color={
+                        request.status === "approved"
+                          ? "success"
+                          : request.status === "rejected"
+                          ? "error"
+                          : request.pending_action === "admin"
+                          ? "warning"
+                          : "info"
+                      }
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title="Ver comprobante">
+                      <IconButton color="primary" onClick={() => { setSelectedRequest(request); setOpenVoucherModal(true); }}>
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
+                    {request.pending_action === "admin" && (
                       <>
-                        <IconButton color="success" onClick={() => handleAccept(request.id)}>
-                          <Check />
-                        </IconButton>
-                        <IconButton color="error" onClick={() => { setSelectedRequest(request); setOpenRejectModal(true); }}>
-                          <Close />
-                        </IconButton>
-                        <IconButton color="warning" onClick={() => { setSelectedRequest(request); setOpenRescheduleModal(true); }}>
-                          <Schedule />
-                        </IconButton>
+                        <Tooltip title="Aprobar solicitud">
+                          <IconButton color="success" onClick={() => handleAccept(request.id)}>
+                            <Check />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Rechazar solicitud">
+                          <IconButton color="error" onClick={() => { setSelectedRequest(request); setOpenRejectModal(true); }}>
+                            <Close />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Proponer nueva fecha">
+                          <IconButton color="warning" onClick={() => { setSelectedRequest(request); setOpenRescheduleModal(true); }}>
+                            <Schedule />
+                          </IconButton>
+                        </Tooltip>
                       </>
                     )}
                     {request.status === "rejected" && request.admin_comment && (

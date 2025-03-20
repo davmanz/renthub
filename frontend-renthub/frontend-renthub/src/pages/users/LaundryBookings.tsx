@@ -22,6 +22,7 @@ const LaundryBookings = () => {
     setError("");
     try {
       const response = await api.get(endpoints.laundryManagement.list);
+      console.log(response);
       setLaundryBookings(response.data);
     } catch (err) {
       setError("Error al cargar las reservas de lavandería.");
@@ -74,8 +75,21 @@ const LaundryBookings = () => {
             <TableBody>
               {laundryBookings.map((booking: any) => (
                 <TableRow key={booking.id}>
-                  <TableCell>{booking.date}</TableCell>
-                  <TableCell>{booking.time_slot}</TableCell>
+                  <TableCell>
+                    {booking.status === "counter_proposal"
+                      ? booking.counter_proposal_date
+                      : booking.status === "proposed"
+                      ? booking.proposed_date
+                      : booking.date}
+                  </TableCell>
+
+                  <TableCell>
+                    {booking.status === "counter_proposal"
+                      ? booking.counter_proposal_time_slot
+                      : booking.status === "proposed"
+                      ? booking.proposed_time_slot
+                      : booking.time_slot}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={
@@ -99,13 +113,15 @@ const LaundryBookings = () => {
                         </IconButton>
                       </Tooltip>
                     )}
-                    {booking.pending_action === "user" && booking.status === "counter_proposal" && (
-                      <Tooltip title="Aceptar propuesta del administrador">
-                        <IconButton color="success" onClick={() => handleAcceptProposal(booking.id)}>
-                          <Check />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                    {booking.pending_action === "user" && 
+                      (booking.status === "counter_proposal" || booking.status === "proposed") && (
+                        <Tooltip title="Aceptar propuesta del administrador">
+                          <IconButton color="success" onClick={() => handleAcceptProposal(booking.id)}>
+                            <Check />
+                          </IconButton>
+                        </Tooltip>
+                      )
+                    }
                     {booking.pending_action === "user" && (
                       <Tooltip title="Proponer nueva fecha">
                         <IconButton color="warning" onClick={() => { setSelectedBooking(booking); setOpenRescheduleModal(true); }}>

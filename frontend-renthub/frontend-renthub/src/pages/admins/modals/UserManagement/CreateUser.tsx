@@ -23,7 +23,7 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
     first_name: "",
     last_name: "",
     phone_number: "",
-    document_type: "",
+    document_type_id: "",
     document_number: "",
     role: "tenant",
     reference_1: "",
@@ -47,7 +47,7 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
         first_name: "",
         last_name: "",
         phone_number: "",
-        document_type: "",
+        document_type_id: "",
         document_number: "",
         role: "tenant",
         reference_1: "",
@@ -108,8 +108,10 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
     setLoading(true);
     try {
       if (userToEdit) {
-        await api.put(`${endpoints.userManagement.user}/${userToEdit.id}`, formData);
+        console.log(formData);
+        await api.put(`${endpoints.userManagement.user}${userToEdit.id}/`, formData);
       } else {
+        console.log(formData);
         await api.post(endpoints.userManagement.user, formData);
       }
       onUserSaved();
@@ -147,7 +149,7 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
           <Grid item xs={6}>
             <FormControl fullWidth>
               <InputLabel>Tipo de Documento</InputLabel>
-              <Select name="document_type" value={formData.document_type} onChange={handleChange}>
+              <Select name="document_type_id" value={formData.document_type_id} onChange={handleChange}>
                 {documentTypes.map((doc) => (
                   <MenuItem key={doc.id} value={doc.id}>
                     {doc.name}

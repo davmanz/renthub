@@ -17,7 +17,7 @@ const CreateRoomModal = ({ open, onClose, building, refreshRooms }) => {
         building: building.id,
       };
 
-      const response = await api.post(endpoints.createSites.rooms, newRoom);
+      const response = await api.post(endpoints.siteManagement.rooms, newRoom);
 
       if (response.status === 201) {
         refreshRooms();

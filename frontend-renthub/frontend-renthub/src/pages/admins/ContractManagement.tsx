@@ -19,9 +19,10 @@ import {
 import { Edit, Delete, LibraryAdd } from "@mui/icons-material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
+import {Contract} from "../../types/types"
 
 const ContractManagement = () => {
-  const [contracts, setContracts] = useState([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,7 +44,7 @@ const ContractManagement = () => {
     }
   };
 
-  const handleDelete = async (contractId) => {
+  const handleDelete = async (contractId = String) => {
     if (!window.confirm("¿Seguro que deseas eliminar este contrato?")) return;
     await api.delete(`${endpoints.contractManagement.contracts}${contractId}/`);
     fetchContracts();

@@ -1,5 +1,8 @@
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
+from django.db.models import Q
+from datetime import date
+
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -117,31 +120,88 @@ class ContractViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
-        """Restringe la visibilidad de contratos según el rol"""
+        """Restringe la visibilidad de contratos sin modificar la BD."""
         user = self.request.user
+        contracts = Contract.objects.all()
 
-        if user.is_superadmin():
-            return Contract.objects.all()  # Ve todos los contratos
-        elif user.is_admin():
-            return Contract.objects.filter(user__role="tenant")  # Solo ve contratos de Tenants
-        else:
-            return Contract.objects.filter(user=user)  # Solo ve su propio contrato
+        if not user.is_superadmin():
+            contracts = contracts.filter(user=user) if user.is_tenant() else contracts.filter(user__role="tenant")
+
+        # 🔹 No se modifica el estado de los contratos en la base de datos
+        today = datetime.today()
+        current_year_month = f"{today.year}-{today.month:02d}"
+
+        # Filtra los contratos que tienen pagos vencidos sin modificar `status`
+        for contract in contracts:
+            contract.has_overdue = contract.payments.filter(
+                Q(status="overdue") | Q(status="pending") | Q(status="rejected"),
+                month_paid__lte=current_year_month
+            ).exists()
+
+        return contracts
 
 class PaymentHistoryViewSet(viewsets.ModelViewSet):
     queryset = PaymentHistory.objects.all()
     serializer_class = PaymentHistorySerializer
-    permission_classes = [IsTenant]  
+    permission_classes = [IsTenant]
 
-    def get_queryset(self):
-        """Restringe la visibilidad del historial de pagos"""
-        user = self.request.user
+    def create(self, request, *args, **kwargs):
+        """Solo permite pagos en orden, sin saltarse meses."""
+        user = request.user
+        contract_id = request.data.get("contract")
+        month_paid = request.data.get("month_paid")  # Formato 'YYYY-MM'
 
-        if user.is_superadmin():
-            return PaymentHistory.objects.all()
-        elif user.is_admin():
-            return PaymentHistory.objects.filter(contract__user__role="tenant")
-        else:
-            return PaymentHistory.objects.filter(contract__user=user)
+        try:
+            contract = Contract.objects.get(id=contract_id, user=user)
+        except Contract.DoesNotExist:
+            return Response({"error": "Contrato no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Verificar si hay algún mes impago antes del mes que intenta pagar
+        unpaid_previous_payments = contract.payments.filter(
+            month_paid__lt=month_paid, status__in=["overdue", "pending_review", "pending"]
+        ).exists()
+
+        if unpaid_previous_payments:
+            return Response({"error": "No puedes saltarte meses sin pagar."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Asigna la fecha actual y evita que el usuario la manipule
+        data = request.data.copy()
+        data.pop("payment_date", None)
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def approve_payment(self, request, pk=None):
+        """Aprueba un pago y actualiza el estado del contrato."""
+        payment = self.get_object()
+        payment.status = "approved"
+        payment.save()
+
+        contract = payment.contract
+        if not contract.payments.filter(status="overdue").exists():
+            contract.status = "active"
+            contract.save()
+
+        serializer = PaymentHistorySerializer(payment)  # 🚨 Devuelve el pago actualizado
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def reject_payment(self, request, pk=None):
+        """Rechaza un pago y marca el contrato como vencido si es necesario."""
+        payment = self.get_object()
+        payment.status = "rejected"
+        payment.save()
+
+        contract = payment.contract
+        contract.status = "pending"  # 🚨 El contrato queda como pendiente
+        contract.save()
+
+        return Response({"message": "Pago rechazado"}, status=status.HTTP_200_OK)
+
 
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
@@ -252,8 +312,23 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """Aprueba una reserva de lavandería"""
         booking = self.get_object()
+
+        # Si hay una contrapropuesta del usuario, usarla como fecha/hora final
+        if booking.status == "counter_proposal":
+            booking.date = booking.counter_proposal_date
+            booking.time_slot = booking.counter_proposal_time_slot
+
+        # Limpiar campos de propuesta y contrapropuesta
+        booking.proposed_date = None
+        booking.proposed_time_slot = None
+        booking.counter_proposal_date = None
+        booking.counter_proposal_time_slot = None
+
+        # Actualizar estado
         booking.status = "approved"
+        booking.last_action_by = "admin"
         booking.save()
+
         return Response({"message": "Reserva aprobada"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
@@ -268,6 +343,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.user_response = "rejected"
         booking.admin_comment = comment
         booking.save()
+
         return Response({"message": "Reserva rechazada"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
@@ -289,6 +365,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.proposed_time_slot = proposed_time_slot
         booking.last_action_by = action_user
         booking.save()
+        
         return Response({"message": "Propuesta enviada"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], permission_classes=[IsTenant])
@@ -322,8 +399,6 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.last_action_by = action_user
         booking.save()
         return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
-
-# Respuesta asi los dashboardfrom rest_framework.views import APIView
 
 class UserDashboardView(APIView):
     permission_classes = [IsAuthenticated]
@@ -372,38 +447,91 @@ class UserDashboardView(APIView):
             status=status.HTTP_200_OK,
         )
 
+#DASHBOARD
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]  # Solo Admins y Superadmins pueden acceder
 
     def get_unpaid_users(self):
-        """Obtiene la lista de usuarios con pagos vencidos"""
-        unpaid_users = CustomUser.objects.filter(
-            contracts__payments__status="pending"
-        ).distinct().values("id", "first_name", "last_name", "email")
-        return unpaid_users
 
+        """Obtiene la lista de usuarios con pagos vencidos (sin voucher y el mes ya venció)"""
+        today = datetime.today().strftime("%Y-%m")  # Obtener el año-mes actual
+
+        unpaid_users = CustomUser.objects.filter(
+            contracts__payments__status="overdue"
+        ).distinct().values("id", "first_name", "last_name", "email")
+
+        return [
+            {
+                "id": user["id"],
+                "name": f"{user['first_name']} {user['last_name']}",
+                "email": user["email"]
+            }
+            for user in unpaid_users
+        ]
+        
     def get_unverified_payments(self):
-        """Lista los pagos que aún no han sido verificados"""
-        return PaymentHistory.objects.filter(status="pending").values(
-            "id", "contract__user__first_name", "contract__user__last_name",
-            "month_paid", "payment_date", "status"
-        )
+        """Lista los pagos que están en análisis (se subió voucher y sigue pendiente)"""
+        return [
+            {
+                "id": payment.id,
+                "user": {
+                    "id": payment.contract.user.id,
+                    "name": f"{payment.contract.user.first_name} {payment.contract.user.last_name}"
+                },
+                "contract": {
+                    "id": payment.contract.id,
+                    "room_number": payment.contract.room.room_number,
+                    "building": payment.contract.room.building.name
+                },
+                "month_paid": payment.month_paid,
+                "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
+                "status": payment.status
+            }
+            for payment in PaymentHistory.objects.filter(
+                status="pending",  # Solo en análisis
+                receipt_image__isnull=False  # Ya cargaron voucher
+            ).select_related("contract__user", "contract__room__building")
+        ]
 
     def get_washing_payments(self):
-        """Lista los pagos por uso de lavadora"""
-        return PaymentHistory.objects.filter(payment_type="washing").values(
-            "id", "contract__user__first_name", "contract__user__last_name",
-            "month_paid", "payment_date", "status"
-        )
+        """Lista los pagos por uso de lavadora, incluyendo contrato y habitación"""
+        return [
+            {
+                "id": payment.id,
+                "user": {
+                    "id": payment.contract.user.id,
+                    "name": f"{payment.contract.user.first_name} {payment.contract.user.last_name}"
+                },
+                "contract": {
+                    "id": payment.contract.id,
+                    "room_number": payment.contract.room.room_number,
+                    "building": payment.contract.room.building.name
+                },
+                "month_paid": payment.month_paid,
+                "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
+                "status": payment.status
+            }
+            for payment in PaymentHistory.objects.filter(payment_type="washing").select_related("contract__user", "contract__room__building")
+        ]
 
     def get(self, request):
-        """Retorna la información del dashboard de administrador"""
+        """Retorna la información del dashboard de administrador con la estructura corregida"""
+        unpaid_users = self.get_unpaid_users()
+        unverified_payments = self.get_unverified_payments()
+        washing_payments = self.get_washing_payments()
+
         return Response({
-            "unpaid_users": self.get_unpaid_users(),
-            "unverified_payments": self.get_unverified_payments(),
-            "washing_payments": self.get_washing_payments()
+            "summary": {
+                "unpaid_users_count": len(unpaid_users),
+                "unverified_payments_count": len(unverified_payments),
+                "washing_payments_count": len(washing_payments)
+            },
+            "unpaid_users": unpaid_users,
+            "unverified_payments": unverified_payments,
+            "washing_payments": washing_payments
         })
-    
+
+
 class LaundryDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 

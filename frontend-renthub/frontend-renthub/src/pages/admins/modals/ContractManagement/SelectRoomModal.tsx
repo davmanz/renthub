@@ -11,7 +11,7 @@ const SelectRoomModal = ({ open, onClose, onSelect }) => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    api.get(endpoints.createSites.building)
+    api.get(endpoints.siteManagement.building)
       .then(response => setBuildings(response.data))
       .catch(console.error);
   }, []);

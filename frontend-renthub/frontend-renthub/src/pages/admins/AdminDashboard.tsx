@@ -1,37 +1,45 @@
+import { useEffect, useState } from "react";
 import AdminLayout from "./AdminLayout";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import { useEffect, useState } from "react";
+import PaymentDetailsModal from "./modals/AdminDashboard/PaymentDetailsModal";
 import {
   Container,
-  Paper,
-  Typography,
   Grid,
   Card,
   CardContent,
+  Typography,
   CircularProgress,
   Alert,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
 } from "@mui/material";
-import { BarChart } from "@mui/x-charts/BarChart";
+import { Info } from "@mui/icons-material";
 
 const AdminDashboard = () => {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [openModal, setOpenModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await api.get(endpoints.dashboard.admin);
         setData(response.data);
-      } catch (error: any) {
-        console.error("Error al obtener el dashboard del administrador", error);
-        setError("Hubo un error al cargar los datos.");
+      } catch (error) {
+        setError("Error al cargar los datos.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -55,51 +63,125 @@ const AdminDashboard = () => {
     );
   }
 
+  // Agrupar pagos por usuario
+  const userPaymentsSummary = data?.unverified_payments.reduce((acc, payment) => {
+    const userId = payment.user.id;
+    if (!acc[userId]) {
+      acc[userId] = {
+        user: payment.user,
+        pending: 0,
+        inReview: 0,
+        payments: [],
+      };
+    }
+    if (payment.status === "pending") {
+      acc[userId].pending += 1;
+    } else {
+      acc[userId].inReview += 1;
+    }
+    acc[userId].payments.push(payment);
+    return acc;
+  }, {});
+
+  const usersWithPayments = Object.values(userPaymentsSummary || {});
+
   return (
     <AdminLayout>
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography variant="h4" sx={{ mb: 3, color: "#1976d2" }}>
-          Resumen General
-        </Typography>
 
+        {/* Sección de Alertas */}
+        <Alert severity={data?.summary.unverified_payments_count > 0 ? "warning" : "success"} sx={{ mb: 3 }}>
+          {data?.summary.unverified_payments_count > 0
+            ? `⚠️ Hay ${data.summary.unverified_payments_count} pagos pendientes de verificación.`
+            : "✅ No hay pagos pendientes."}
+        </Alert>
+
+        {/* Widgets en la misma fila */}
         <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ backgroundColor: "#e3f2fd" }}>
+          {/* Pagos Pendientes */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ backgroundColor: "#ffccbc", height: "100%" }}>
               <CardContent>
-                <Typography variant="h6">Pagos Pendientes</Typography>
-                <Typography variant="h4">{data?.pending_payments ?? 0}</Typography>
+                <Typography variant="h6" align="center">Pagos Pendientes</Typography>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={6}>
+                    <Typography variant="body1" align="center"><strong>Total Pagos</strong></Typography>
+                    <Typography variant="h5" align="center">{data?.summary.unverified_payments_count ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body1" align="center"><strong>Usuarios Afectados</strong></Typography>
+                    <Typography variant="h5" align="center">{data?.summary.unpaid_users_count ?? 0}</Typography>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ backgroundColor: "#c8e6c9" }}>
+          {/* Solicitudes de Lavandería */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ backgroundColor: "#d1c4e9", height: "100%" }}>
               <CardContent>
-                <Typography variant="h6">Pagos Aprobados</Typography>
-                <Typography variant="h4">{data?.approved_payments ?? 0}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4}>
-            <Card sx={{ backgroundColor: "#ffccbc" }}>
-              <CardContent>
-                <Typography variant="h6">Reservas de Lavandería</Typography>
-                <Typography variant="h4">{data?.laundry_reservations ?? 0}</Typography>
+                <Typography variant="h6" align="center">Solicitudes de Lavandería</Typography>
+                <Grid container spacing={2} sx={{ mt: 1 }}>
+                  <Grid item xs={4}>
+                    <Typography variant="body1" align="center"><strong>Total</strong></Typography>
+                    <Typography variant="h5" align="center">{data?.summary.washing_payments_count ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body1" align="center"><strong>Pend. Usuario</strong></Typography>
+                    <Typography variant="h5" align="center">{data?.summary.laundry_pending_user ?? 0}</Typography>
+                  </Grid>
+                  <Grid item xs={4}>
+                    <Typography variant="body1" align="center"><strong>Pend. Admin</strong></Typography>
+                    <Typography variant="h5" align="center">{data?.summary.laundry_pending_admin ?? 0}</Typography>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        <Paper sx={{ mt: 4, p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Historial de Pagos Mensuales</Typography>
-          <BarChart
-            xAxis={[{ scaleType: "band", data: data?.monthly_payments?.months || [] }]}
-            series={[{ data: data?.monthly_payments?.values || [] }]}
-            width={600}
-            height={300}
-          />
-        </Paper>
+        {/* Tabla de Usuarios con Pagos Pendientes */}
+        <Typography variant="h6" sx={{ mt: 4 }}>Usuarios con Pagos Pendientes</Typography>
+        {usersWithPayments.length > 0 ? (
+          <TableContainer component={Paper} sx={{ mt: 2 }}>
+            <Table>
+              <TableHead sx={{ bgcolor: "#1976d2" }}>
+                <TableRow>
+                  <TableCell sx={{ color: "white" }}>Usuario</TableCell>
+                  <TableCell sx={{ color: "white" }}>Pagos Sin Voucher</TableCell>
+                  <TableCell sx={{ color: "white" }}>Pagos en Análisis</TableCell>
+                  <TableCell sx={{ color: "white" }}>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {usersWithPayments.map((user) => (
+                  <TableRow key={user.user.id}>
+                    <TableCell>{user.user.name}</TableCell>
+                    <TableCell>{user.pending}</TableCell>
+                    <TableCell>{user.inReview}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Info />}
+                        onClick={() => { setSelectedUser(user); setOpenModal(true); }}
+                      >
+                        Ver Detalles
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Typography sx={{ mt: 2 }}>No hay usuarios con pagos pendientes.</Typography>
+        )}
+
+        {/* Modal de Detalles de Pagos */}
+        <PaymentDetailsModal open={openModal} onClose={() => setOpenModal(false)} user={selectedUser} />
+
       </Container>
     </AdminLayout>
   );
