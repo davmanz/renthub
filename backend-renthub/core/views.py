@@ -172,7 +172,16 @@ class PaymentHistoryViewSet(viewsets.ModelViewSet):
         serializer.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    def update(self, request, *args, **kwargs):
+        if not request.user.is_superadmin():
+            return Response({"detail": "No tienes permiso para modificar pagos."}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_superadmin():
+            return Response({"detail": "No tienes permiso para eliminar pagos."}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def approve_payment(self, request, pk=None):
@@ -193,7 +202,12 @@ class PaymentHistoryViewSet(viewsets.ModelViewSet):
     def reject_payment(self, request, pk=None):
         """Rechaza un pago y marca el contrato como vencido si es necesario."""
         payment = self.get_object()
+        comment = request.data.get("admin_comment", "").strip()
+        if not comment:
+            return Response({"error": "Debes ingresar un motivo de rechazo."}, status=status.HTTP_400_BAD_REQUEST)
+
         payment.status = "rejected"
+        payment.admin_comment = comment
         payment.save()
 
         contract = payment.contract
@@ -470,6 +484,8 @@ class AdminDashboardView(APIView):
         ]
         
     def get_unverified_payments(self):
+        current_month = datetime.today().strftime("%Y-%m")
+
         """Lista los pagos que están en análisis (se subió voucher y sigue pendiente)"""
         return [
             {
@@ -486,10 +502,12 @@ class AdminDashboardView(APIView):
                 "month_paid": payment.month_paid,
                 "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
                 "status": payment.status
+
             }
             for payment in PaymentHistory.objects.filter(
-                status="pending",  # Solo en análisis
-                receipt_image__isnull=False  # Ya cargaron voucher
+                status__in=["pending", "overdue"],
+                receipt_image__isnull=False,
+                month_paid__lte=current_month 
             ).select_related("contract__user", "contract__room__building")
         ]
 

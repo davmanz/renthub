@@ -34,9 +34,11 @@ const endpoints = {
   },
   
   payments: {
-    unverified: `${API_BASE}/payments/unverified/`,
-    rental: `${API_BASE}/payments/rental/`,
-    laundry: `${API_BASE}/payments/laundry/`,
+    approve: (paymentId: string) =>`${API_BASE}/payments/${paymentId}/approve_payment/`,
+    reject: (paymentId: string) =>`${API_BASE}/payments/${paymentId}/reject_payment/`, 
+    list: `${API_BASE}/payments/`,
+    detail: (paymentId: string) => `${API_BASE}/payments/${paymentId}/`,
+    create: `${API_BASE}/payments/`,
   },
 
   laundryManagement: {

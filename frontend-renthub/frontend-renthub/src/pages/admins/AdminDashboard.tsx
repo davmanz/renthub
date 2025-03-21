@@ -18,9 +18,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Button,
 } from "@mui/material";
 import { Info } from "@mui/icons-material";
+import { IconButton, Tooltip } from "@mui/material";
 
 const AdminDashboard = () => {
   const [data, setData] = useState(null);
@@ -88,14 +88,6 @@ const AdminDashboard = () => {
   return (
     <AdminLayout>
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-
-        {/* Sección de Alertas */}
-        <Alert severity={data?.summary.unverified_payments_count > 0 ? "warning" : "success"} sx={{ mb: 3 }}>
-          {data?.summary.unverified_payments_count > 0
-            ? `⚠️ Hay ${data.summary.unverified_payments_count} pagos pendientes de verificación.`
-            : "✅ No hay pagos pendientes."}
-        </Alert>
-
         {/* Widgets en la misma fila */}
         <Grid container spacing={3}>
           {/* Pagos Pendientes */}
@@ -109,7 +101,7 @@ const AdminDashboard = () => {
                     <Typography variant="h5" align="center">{data?.summary.unverified_payments_count ?? 0}</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body1" align="center"><strong>Usuarios Afectados</strong></Typography>
+                    <Typography variant="body1" align="center"><strong>Usuarios</strong></Typography>
                     <Typography variant="h5" align="center">{data?.summary.unpaid_users_count ?? 0}</Typography>
                   </Grid>
                 </Grid>
@@ -149,8 +141,8 @@ const AdminDashboard = () => {
               <TableHead sx={{ bgcolor: "#1976d2" }}>
                 <TableRow>
                   <TableCell sx={{ color: "white" }}>Usuario</TableCell>
-                  <TableCell sx={{ color: "white" }}>Pagos Sin Voucher</TableCell>
-                  <TableCell sx={{ color: "white" }}>Pagos en Análisis</TableCell>
+                  <TableCell sx={{ color: "white" }}>Pago En Analisis</TableCell>
+                  <TableCell sx={{ color: "white" }}>Pagos Vencidos</TableCell>
                   <TableCell sx={{ color: "white" }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -161,14 +153,11 @@ const AdminDashboard = () => {
                     <TableCell>{user.pending}</TableCell>
                     <TableCell>{user.inReview}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<Info />}
-                        onClick={() => { setSelectedUser(user); setOpenModal(true); }}
-                      >
-                        Ver Detalles
-                      </Button>
+                    <Tooltip title="Ver Detalles">
+                      <IconButton color="primary" onClick={() => { setSelectedUser(user); setOpenModal(true); }}>
+                        <Info />
+                      </IconButton>
+                    </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}

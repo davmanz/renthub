@@ -161,6 +161,8 @@ class PaymentHistory(models.Model):
     payment_date = models.DateField()
     month_paid = models.CharField(max_length=20)
     receipt_image = models.ImageField(upload_to="payments/receipts/", blank=True, null=True)
+    admin_comment = models.TextField(blank=True, null=True)
+
 
     STATUS_CHOICES = [
     ("overdue", "Vencido"),

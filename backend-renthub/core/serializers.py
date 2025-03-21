@@ -169,7 +169,9 @@ class ContractSerializer(serializers.ModelSerializer):
 class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentHistory
-        fields = ["id", "contract", "month_paid", "receipt_image", "status", "payment_type", "payment_date"]
+        fields = ["id", "contract", "month_paid", 
+                  "receipt_image", "status", "payment_type", 
+                  "payment_date", "admin_comment"]
         extra_kwargs = {
             "payment_date": {"read_only": True}  # 🔹 Evita que el usuario envíe la fecha manualmente
         }
