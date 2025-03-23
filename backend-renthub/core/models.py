@@ -155,6 +155,9 @@ class Contract(models.Model):
             self.room.is_occupied = False
             self.room.save(update_fields=["is_occupied"])
 
+###########################################################################
+
+'''
 class PaymentHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="payments")
@@ -182,6 +185,63 @@ class PaymentHistory(models.Model):
     def __str__(self):
         return f"Pago de {self.contract.user.email} - {self.month_paid}"
 
+'''
+
+# RentPaymentHistory - Pago mensual de arriendo
+class RentPaymentHistory(models.Model):
+
+    def rent_voucher_upload_path(instance, filename):
+        ext = filename.split('.')[-1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        return os.path.join("payments/rent/", unique_filename)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    contract = models.ForeignKey("core.Contract", on_delete=models.CASCADE, related_name="rent_payments")
+    month_paid = models.CharField(max_length=20)  # Formato "YYYY-MM"
+    payment_date = models.DateField(auto_now_add=True)
+    receipt_image = models.ImageField(
+        upload_to=rent_voucher_upload_path,
+        blank=True, null=True,
+        validators=[validate_image_file])
+    admin_comment = models.TextField(blank=True, null=True)
+
+    STATUS_CHOICES = [
+        ("overdue", "Vencido"),
+        ("pending_review", "En análisis"),
+        ("approved", "Aprobado"),
+        ("rejected", "Rechazado"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="overdue")
+
+    def __str__(self):
+        return f"Rent {self.contract.user.email} - {self.month_paid}"
+
+# LaundryPaymentHistory - Pago por reserva de lavadora
+class LaundryPaymentHistory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="laundry_payments")
+    laundry_booking = models.OneToOneField("core.LaundryBooking", on_delete=models.CASCADE, related_name="payment")
+    payment = models.OneToOneField("core.LaundryPaymentHistory", on_delete=models.CASCADE, null=True, blank=True)
+    payment_date = models.DateField(auto_now_add=True)
+    receipt_image = models.ImageField(
+    upload_to="payments/laundry/",
+    blank=False,
+    null=False,
+    validators=[validate_image_file]  # Puedes usar tu validador actual de imágenes
+)
+    admin_comment = models.TextField(blank=True, null=True)
+
+    STATUS_CHOICES = [
+        ("pending_review", "En análisis"),
+        ("approved", "Aprobado"),
+        ("rejected", "Rechazado"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending_review")
+
+    def __str__(self):
+        return f"Laundry {self.user.email} - {self.payment_date}"
+
+######################################################################################
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     building = models.ForeignKey("core.Building", on_delete=models.CASCADE, related_name="rooms")

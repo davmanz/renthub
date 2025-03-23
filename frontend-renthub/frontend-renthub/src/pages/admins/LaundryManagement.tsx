@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
-import { LaundryBooking } from "../../types/types";
 import {
   Container,
   Paper,
@@ -25,10 +24,10 @@ import RejectionReasonModal from "./modals/LaundryManagement/RejectionReasonModa
 
 
 const LaundryManagement = () => {
-  const [requests, setRequests] = useState<LaundryBooking[]>([]);
+  const [requests, setRequests] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedRequest, setSelectedRequest] = useState<LaundryBooking | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<null>(null);
   const [openRescheduleModal, setOpenRescheduleModal] = useState(false);
   const [openRejectModal, setOpenRejectModal] = useState(false);
   const [openVoucherModal, setOpenVoucherModal] = useState(false);
@@ -78,7 +77,7 @@ const LaundryManagement = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {requests.map((request: LaundryBooking) => (
+              {requests.map((request) => (
                 <TableRow key={request.id}>
                   <TableCell>{request.user_full_name}</TableCell>
                   <TableCell>

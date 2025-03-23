@@ -22,7 +22,7 @@ const ChangePassword = () => {
     setSuccess("");
 
     try {
-      const response = await api.post(endpoints.auth.changePassword, {
+      const response = await api.post(endpoints.auth.me, {
         current_password: currentPassword,
         new_password: newPassword,
       });

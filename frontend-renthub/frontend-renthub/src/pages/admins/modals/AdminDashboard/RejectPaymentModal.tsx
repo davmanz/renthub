@@ -17,7 +17,7 @@ const RejectPaymentModal = ({ open, onClose, payment, onRejected }) => {
     if (!payment || !reason.trim()) return;
 
     try {
-      await api.post(endpoints.payments.reject(payment.id), {
+      await api.post(endpoints.payments.rejectRent(payment.id), {
         admin_comment: reason,
       });
 

@@ -1,4 +1,5 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from "@mui/material";
+import { ImageUtil } from "../utils/ImageUtil"; // ✅ nuevo import
 
 interface RejectReasonModalProps {
   open: boolean;
@@ -10,13 +11,6 @@ interface RejectReasonModalProps {
 }
 
 const RejectReasonModal = ({ open, booking, handleClose }: RejectReasonModalProps) => {
-  const getImageUrl = () => {
-    const base = import.meta.env.VITE_API_URL || "";
-    const path = booking.voucher_image || "";
-    if (!path) return "";
-    return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
-  };
-
   return (
     <Dialog open={open} onClose={handleClose} fullWidth>
       <DialogTitle sx={{ fontWeight: "bold", color: "#d32f2f" }}>
@@ -30,7 +24,7 @@ const RejectReasonModal = ({ open, booking, handleClose }: RejectReasonModalProp
 
         {booking?.voucher_image && (
           <img
-            src={getImageUrl()}
+            src={ImageUtil.buildUrl(booking.voucher_image)}
             alt="Comprobante rechazado"
             style={{
               width: "100%",

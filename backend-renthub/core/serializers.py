@@ -4,19 +4,18 @@ from datetime import datetime
 from django.core.exceptions import ValidationError
 from core.models import (CustomUser, 
                          Contract, 
-                         PaymentHistory, 
+                         LaundryPaymentHistory, RentPaymentHistory,
                          Room, Building,
                          ReferencePerson,
                          LaundryBooking, DocumentType
                          )
 from dateutil.relativedelta import relativedelta
-from core.models import Contract, PaymentHistory
+from core.models import Contract, RentPaymentHistory, Room, Building, ReferencePerson, DocumentType
 
 class ReferencePersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReferencePerson
         fields = "__all__"
-
 
 class CustomUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -100,20 +99,19 @@ class CustomUserSerializer(serializers.ModelSerializer):
             }
         return None
 
-
-
 class ContractSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     room_number = serializers.CharField(source="room.room_number", read_only=True)
     building_name = serializers.CharField(source="room.building.name", read_only=True)
     is_overdue = serializers.SerializerMethodField()
+    next_month = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
         fields = [
             "id", "user", "user_full_name", "room", "room_number", "building_name",
             "start_date", "end_date", "rent_amount", "deposit_amount", 
-            "includes_wifi", "wifi_cost", "is_overdue"
+            "includes_wifi", "wifi_cost", "is_overdue", "next_month"
         ]
 
     def get_user_full_name(self, obj):
@@ -124,10 +122,29 @@ class ContractSerializer(serializers.ModelSerializer):
         today = datetime.today()
         current_year_month = f"{today.year}-{today.month:02d}"
 
-        return obj.payments.filter(
-            status__in=["overdue", "pending", "rejected"], month_paid__lte=current_year_month
+        return obj.rent_payments.filter(
+            status__in=["overdue", "pending_review", "rejected"], month_paid__lte=current_year_month
         ).exists()
     
+    def get_next_month(self, obj):
+        """Devuelve el próximo mes a pagar y, si tiene voucher, el nombre del archivo"""
+        payments = obj.rent_payments.filter(
+            status__in=["overdue", "pending_review", "rejected"]
+        ).order_by("month_paid")
+
+        if not payments.exists():
+            return None
+
+        next_payment = payments.first()
+        return {
+            "id": next_payment.id,
+            "payment": next_payment.month_paid,
+            "voucher": next_payment.receipt_image.name if next_payment.receipt_image else None,
+            "status": next_payment.status,
+            "admin_comment": next_payment.admin_comment
+        }
+
+
     def create(self, validated_data):
         """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
         with transaction.atomic():  # 🔹 Bloquea la consulta para evitar condiciones de carrera
@@ -151,10 +168,10 @@ class ContractSerializer(serializers.ModelSerializer):
                 month_payment = current_date.strftime("%Y-%m")
 
                 # Si el mes de pago ya pasó, el estado debe ser "overdue", de lo contrario "pending"
-                payment_state = "overdue" if month_payment < current_month else "pending"
+                payment_state = "overdue" if month_payment < current_month else "pending_review"
 
                 # Crear el registro en PaymentHistory con el estado correcto
-                PaymentHistory.objects.create(
+                RentPaymentHistory.objects.create(
                     contract=contract,
                     month_paid=month_payment,
                     payment_date=current_date,
@@ -165,7 +182,9 @@ class ContractSerializer(serializers.ModelSerializer):
 
         return contract
 
+##############################################################################
 
+'''
 class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentHistory
@@ -181,6 +200,63 @@ class PaymentHistorySerializer(serializers.ModelSerializer):
         validated_data["payment_date"] = datetime.today().date()  # 🔹 Fecha actual asignada automáticamente
         return super().create(validated_data)
 
+'''
+
+class RentPaymentSerializer(serializers.ModelSerializer):
+    contract = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RentPaymentHistory
+        fields = [
+            "id", "contract", "month_paid", "receipt_image",
+            "payment_date", "status", "admin_comment"
+        ]
+        extra_kwargs = {
+            "payment_date": {"read_only": True},
+            "status": {"read_only": True},
+            "admin_comment": {"read_only": True}
+        }
+
+    def create(self, validated_data):
+        validated_data["payment_date"] = datetime.today().date()
+        validated_data["status"] = "pending_review"
+        return super().create(validated_data)
+    
+    def get_contract(self, obj):
+        return {
+            "id": str(obj.contract.id),
+            "building": obj.contract.room.building.name,
+            "room": obj.contract.room.room_number
+        }
+
+class LaundryPaymentSerializer(serializers.ModelSerializer):
+    payment_status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LaundryPaymentHistory
+        fields = [
+            "id", "user", "laundry_booking", "receipt_image",
+            "payment_date", "status", "admin_comment"
+        ]
+        extra_kwargs = {
+            "user": {"read_only": True},
+            "payment_date": {"read_only": True},
+            "status": {"read_only": True},
+            "admin_comment": {"read_only": True}
+        }
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        validated_data["payment_date"] = datetime.today().date()
+        validated_data["status"] = "pending_review"
+        return super().create(validated_data)
+
+    def get_payment_status(self, obj):
+        return obj.payment.status if hasattr(obj, "payment") else None
+
+
+##############################################################################
+
 class RoomSerializer(serializers.ModelSerializer):
     building_name = serializers.CharField(source="building.name", read_only=True)
 
@@ -194,6 +270,8 @@ class BuildingSerializer(serializers.ModelSerializer):
         model = Building
         fields = "__all__"
 
+
+##############################################################################
 class LaundryBookingSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     pending_action = serializers.SerializerMethodField()
@@ -205,9 +283,16 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
             "voucher_image", "status", "admin_comment",
             "proposed_date", "proposed_time_slot",
             "counter_proposal_date", "counter_proposal_time_slot",
-            "last_action_by", "pending_action"
+            "last_action_by", "pending_action","payment_status"
         ]
         extra_kwargs = {"user": {"required": False}}
+
+    payment_status = serializers.SerializerMethodField()
+
+    def get_payment_status(self, obj):
+        if hasattr(obj, "payment"):
+            return obj.payment.status
+        return None
 
     def create(self, validated_data):
         """Si el usuario autenticado es un Tenant, se asigna automáticamente"""
@@ -228,6 +313,7 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
             return "user" if obj.last_action_by == "admin" else "admin"
         return None  # No hay acción pendiente (ya está aprobada o rechazada)
 
+##############################################################################
 class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentType

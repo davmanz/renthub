@@ -3,7 +3,7 @@ import { Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, T
 import { Close, Schedule, Visibility, Check, Info, Add } from "@mui/icons-material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import RejectReasonModal from "./modals/LaundryBookings/RejectReasonModal";
+import RejectReasonModal from "../../components/shared/RejectReasonModal";
 import RescheduleModal from "./modals/LaundryBookings/RescheduleModal";
 import ViewVoucherModal from "./modals/LaundryBookings/ViewVoucherModal";
 import ReserveModal from "./modals/LaundryBookings/ReserveModal";

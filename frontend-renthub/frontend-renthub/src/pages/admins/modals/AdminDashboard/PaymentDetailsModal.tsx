@@ -33,15 +33,14 @@ const PaymentDetailsModal = ({ open, onClose, user }) => {
   if (!user) return null;
 
   const getPaymentStatus = (payment) => {
-    if (payment.status === "pending") return "En Análisis";
+    if (payment.status === "pending_review") return "En Análisis";
     if (payment.status === "overdue") return "Vencido";
-    if (payment.status === "approved") return "Aprobado";
-    return "Desconocido";
+    return "Procesado";
   };
 
   const handleApprove = async (paymentId) => {
     try {
-      await api.post(endpoints.payments.approve(paymentId));
+      await api.post(endpoints.payments.approveRent(paymentId));
       setSnackbar({ open: true, message: "Pago aprobado correctamente.", severity: "success" });
 
       // Actualizar estado local
@@ -98,13 +97,13 @@ const PaymentDetailsModal = ({ open, onClose, user }) => {
                         label={getPaymentStatus(payment)}
                         color={
                           payment.status === "overdue" ? "error" :
-                          payment.status === "pending" ? "info" :
+                          payment.status === "pending_review" ? "info" :
                           "success"
                         }
                       />
                     </TableCell>
                     <TableCell>
-                      {payment.status === "pending" && (
+                      {payment.status === "pending_review" && (
                         <>
                           <Tooltip title="Ver Comprobante">
                             <IconButton color="primary" onClick={() => { setSelectedPayment(payment); setOpenVoucherModal(true); }}>

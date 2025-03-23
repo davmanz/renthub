@@ -58,7 +58,7 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }) => {
     setLoading(true);
     try {
       if (contractToEdit) {
-        await api.put(`${endpoints.contractManagement.contracts}/${contractToEdit.id}`, formData);
+        await api.put(endpoints.contractManagement.contracts, formData);
       } else {
         await api.post(endpoints.contractManagement.contracts, formData);
       }

@@ -1,6 +1,5 @@
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
-from django.db.models import Q
 from datetime import date
 
 
@@ -8,28 +7,30 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from core.models import (CustomUser, 
                          Contract, 
-                         PaymentHistory, 
-                         Room, Building,
+                         RentPaymentHistory,
+                         LaundryPaymentHistory,
+                         Room, 
+                         Building,
                          ReferencePerson,
                          DocumentType,
-                         LaundryBooking,
-                         ReferencePerson
+                         LaundryBooking
                          )
 from core.serializers import (CustomUserSerializer, 
                               ContractSerializer, 
-                              PaymentHistorySerializer, 
+                              RentPaymentSerializer, 
+                              LaundryPaymentSerializer,
                               RoomSerializer, 
                               BuildingSerializer,
                               ReferencePersonSerializer,
+                              DocumentTypeSerializer,
                               LaundryBookingSerializer,
-                              DocumentTypeSerializer
                               )
 
 from datetime import date, timedelta, datetime
@@ -103,9 +104,37 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """ Devuelve la información del usuario autenticado """
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+        """ Devuelve la información del usuario autenticado y su estado de pagos (solo para tenants) """
+        user = request.user
+        serializer = self.get_serializer(user)
+
+        # Solo los tenants reciben el campo `status_user`
+        status_user = None
+        if user.is_tenant():
+            today = datetime.today()
+            current_year_month = f"{today.year}-{today.month:02d}"
+
+            # Obtener todos los contratos del usuario
+            contracts = user.contracts.all()
+            payments = RentPaymentHistory.objects.filter(
+                contract__in=contracts,
+                month_paid__lte=current_year_month
+            )
+
+            if payments.filter(status="overdue").exists():
+                status_user = "overdue"
+            elif payments.filter(status="rejected").exists():
+                status_user = "rejected"
+            elif payments.filter(status="pending_review").exists():
+                status_user = "pending_review"
+            else:
+                status_user = "ok"
+
+        response_data = serializer.data
+        if user.is_tenant():
+            response_data["status_user"] = status_user
+
+        return Response(response_data)
 
 class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.all()
@@ -133,13 +162,16 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         # Filtra los contratos que tienen pagos vencidos sin modificar `status`
         for contract in contracts:
-            contract.has_overdue = contract.payments.filter(
-                Q(status="overdue") | Q(status="pending") | Q(status="rejected"),
+            contract.has_overdue = contract.rent_payments.filter(
+                status__in=["overdue", "pending_review", "rejected"],
                 month_paid__lte=current_year_month
             ).exists()
 
         return contracts
 
+##############################################################################
+
+'''
 class PaymentHistoryViewSet(viewsets.ModelViewSet):
     queryset = PaymentHistory.objects.all()
     serializer_class = PaymentHistorySerializer
@@ -215,7 +247,107 @@ class PaymentHistoryViewSet(viewsets.ModelViewSet):
         contract.save()
 
         return Response({"message": "Pago rechazado"}, status=status.HTTP_200_OK)
+'''
 
+class RentPaymentViewSet(viewsets.ModelViewSet):
+    queryset = RentPaymentHistory.objects.all()
+    serializer_class = RentPaymentSerializer
+    permission_classes = [IsTenant]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superadmin() or user.is_admin():
+            return RentPaymentHistory.objects.all()
+        return RentPaymentHistory.objects.filter(contract__user=user)
+
+    def create(self, request, *args, **kwargs):
+        """Valida que no se salte meses impagos"""
+        user = request.user
+        contract_id = request.data.get("contract")
+        month_paid = request.data.get("month_paid")
+
+        try:
+            contract = Contract.objects.get(id=contract_id, user=user)
+        except Contract.DoesNotExist:
+            return Response({"error": "Contrato no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        unpaid_exists = contract.rent_payments.filter(
+            month_paid__lt=month_paid,
+            status__in=["overdue", "pending_review"]
+        ).exists()
+
+        if unpaid_exists:
+            return Response({"error": "No puedes saltarte meses sin pagar."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return super().create(request, *args, **kwargs)
+    
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        receipt = request.data.get("receipt_image", None)
+
+        # Si el pago estaba vencido y ahora se sube un comprobante, cambia a 'pending_review'
+        if instance.status == "overdue" and receipt:
+            instance.status = "pending_review"
+            instance.admin_comment = ""
+            instance.save(update_fields=["status", "admin_comment"])
+
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def approve(self, request, pk=None):
+        payment = self.get_object()
+        payment.status = "approved"
+        payment.save()
+        return Response({"message": "Pago aprobado"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def reject(self, request, pk=None):
+        payment = self.get_object()
+        comment = request.data.get("admin_comment", "").strip()
+        if not comment:
+            return Response({"error": "Se requiere un motivo de rechazo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment.status = "overdue"
+        payment.admin_comment = comment
+        payment.save(update_fields=["admin_comment", "status"])
+        return Response({"message": "Pago rechazado y marcado como vencido"}, status=status.HTTP_200_OK)
+
+class LaundryPaymentViewSet(viewsets.ModelViewSet):
+    queryset = LaundryPaymentHistory.objects.all()
+    serializer_class = LaundryPaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_superadmin() or user.is_admin():
+            return LaundryPaymentHistory.objects.all()
+        return LaundryPaymentHistory.objects.filter(user=user)
+
+    def create(self, request, *args, **kwargs):
+        """Crea pago y lo asocia al usuario autenticado"""
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def approve(self, request, pk=None):
+        payment = self.get_object()
+        payment.status = "approved"
+        payment.save()
+        return Response({"message": "Pago aprobado"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def reject(self, request, pk=None):
+        payment = self.get_object()
+        comment = request.data.get("admin_comment", "")
+        if not comment:
+            return Response({"error": "Se requiere un motivo de rechazo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment.status = "rejected"
+        payment.admin_comment = comment
+        payment.save()
+        return Response({"message": "Pago rechazado"}, status=status.HTTP_200_OK)
+
+
+##############################################################################
 
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
@@ -414,6 +546,9 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.save()
         return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
 
+
+#DASHBOARD
+
 class UserDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -431,13 +566,13 @@ class UserDashboardView(APIView):
 
         # Datos de pagos
         payments = {
-            "pending": list(PaymentHistory.objects.filter(
-                contract__user=user, status="pending"
+            "pending": list(RentPaymentHistory.objects.filter(
+                contract__user=user, status="pending_review"
             ).values("id", "month_paid", "payment_date")),
-            "next_due": PaymentHistory.objects.filter(
+            "next_due": RentPaymentHistory.objects.filter(
                 contract__user=user
             ).order_by("payment_date").values("month_paid").first(),
-            "history": list(PaymentHistory.objects.filter(
+            "history": list(RentPaymentHistory.objects.filter(
                 contract__user=user
             ).values_list("month_paid", flat=True))
         }
@@ -461,17 +596,17 @@ class UserDashboardView(APIView):
             status=status.HTTP_200_OK,
         )
 
-#DASHBOARD
+
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]  # Solo Admins y Superadmins pueden acceder
 
     def get_unpaid_users(self):
-
-        """Obtiene la lista de usuarios con pagos vencidos (sin voucher y el mes ya venció)"""
-        today = datetime.today().strftime("%Y-%m")  # Obtener el año-mes actual
+        """Obtiene la lista de usuarios con pagos vencidos, en revisión o rechazados hasta el mes actual"""
+        current_month = datetime.today().strftime("%Y-%m")
 
         unpaid_users = CustomUser.objects.filter(
-            contracts__payments__status="overdue"
+            contracts__rent_payments__status__in=["overdue", "pending_review", "rejected"],
+            contracts__rent_payments__month_paid__lte=current_month
         ).distinct().values("id", "first_name", "last_name", "email")
 
         return [
@@ -482,11 +617,11 @@ class AdminDashboardView(APIView):
             }
             for user in unpaid_users
         ]
-        
+
     def get_unverified_payments(self):
+        """Lista los pagos que tienen comprobante y están pendientes de aprobación"""
         current_month = datetime.today().strftime("%Y-%m")
 
-        """Lista los pagos que están en análisis (se subió voucher y sigue pendiente)"""
         return [
             {
                 "id": payment.id,
@@ -501,35 +636,35 @@ class AdminDashboardView(APIView):
                 },
                 "month_paid": payment.month_paid,
                 "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
-                "status": payment.status
-
+                "status": payment.status,
+                "receipt_path": payment.receipt_image.url if payment.receipt_image else None
+                
             }
-            for payment in PaymentHistory.objects.filter(
-                status__in=["pending", "overdue"],
+            for payment in RentPaymentHistory.objects.filter(
+                status="pending_review",
                 receipt_image__isnull=False,
-                month_paid__lte=current_month 
+                month_paid__lte=current_month
             ).select_related("contract__user", "contract__room__building")
         ]
+
 
     def get_washing_payments(self):
         """Lista los pagos por uso de lavadora, incluyendo contrato y habitación"""
         return [
             {
-                "id": payment.id,
                 "user": {
-                    "id": payment.contract.user.id,
-                    "name": f"{payment.contract.user.first_name} {payment.contract.user.last_name}"
+                    "id": payment.user.id,
+                    "name": f"{payment.user.first_name} {payment.user.last_name}"
                 },
-                "contract": {
-                    "id": payment.contract.id,
-                    "room_number": payment.contract.room.room_number,
-                    "building": payment.contract.room.building.name
+                "booking": {
+                    "id": payment.laundry_booking.id,
+                    "date": payment.laundry_booking.date,
+                    "time_slot": payment.laundry_booking.time_slot
                 },
-                "month_paid": payment.month_paid,
                 "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
                 "status": payment.status
             }
-            for payment in PaymentHistory.objects.filter(payment_type="washing").select_related("contract__user", "contract__room__building")
+            for payment in LaundryPaymentHistory.objects.all()
         ]
 
     def get(self, request):
@@ -597,8 +732,18 @@ class LaundryDashboardView(APIView):
             "bookings": self.get_bookings(request.user)
         })
 
-class PaymentDetailView(RetrieveAPIView):
-    """Devuelve el detalle de un pago específico"""
-    queryset = PaymentHistory.objects.all()
-    serializer_class = PaymentHistorySerializer
+#####################################################################################
+# CAMBIOS DE  PaymentDetailView
+
+class RentPaymentDetailView(RetrieveUpdateAPIView):
+    queryset = RentPaymentHistory.objects.all()
+    serializer_class = RentPaymentSerializer
     permission_classes = [IsAuthenticated]
+
+class LaundryPaymentDetailView(RetrieveUpdateAPIView):
+    queryset = LaundryPaymentHistory.objects.all()
+    serializer_class = LaundryPaymentSerializer
+    permission_classes = [IsAuthenticated]
+
+#####################################################################################
+
