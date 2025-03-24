@@ -2,9 +2,9 @@ from rest_framework import serializers
 from django.db import transaction
 from datetime import datetime
 from django.core.exceptions import ValidationError
-from core.models import (CustomUser, 
+from core.models import (CustomUser, UserChangeRequest,
                          Contract, 
-                         LaundryPaymentHistory, RentPaymentHistory,
+                         RentPaymentHistory,
                          Room, Building,
                          ReferencePerson,
                          LaundryBooking, DocumentType
@@ -43,7 +43,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "password","role",
             "document_type", "document_type_id",  # GET: Objeto | POST/PUT: ID
             "document_number",
-            "profile_photo", "id_photo", "contract_photo",
+            "profile_photo",
             "is_active", "date_joined",
             "reference_1", "reference_1_id",  # GET: Objeto | POST/PUT: ID
             "reference_2", "reference_2_id",  # GET: Objeto | POST/PUT: ID
@@ -111,7 +111,8 @@ class ContractSerializer(serializers.ModelSerializer):
         fields = [
             "id", "user", "user_full_name", "room", "room_number", "building_name",
             "start_date", "end_date", "rent_amount", "deposit_amount", 
-            "includes_wifi", "wifi_cost", "is_overdue", "next_month"
+            "includes_wifi", "wifi_cost", "is_overdue", "next_month",
+            "contract_photo"
         ]
 
     def get_user_full_name(self, obj):
@@ -182,25 +183,41 @@ class ContractSerializer(serializers.ModelSerializer):
 
         return contract
 
-##############################################################################
+class UserChangeRequestSerializer(serializers.ModelSerializer):
+    ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number"]
 
-'''
-class PaymentHistorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = PaymentHistory
-        fields = ["id", "contract", "month_paid", 
-                  "receipt_image", "status", "payment_type", 
-                  "payment_date", "admin_comment"]
-        extra_kwargs = {
-            "payment_date": {"read_only": True}  # 🔹 Evita que el usuario envíe la fecha manualmente
-        }
+        model = UserChangeRequest
+        fields = [
+            "id", "user", "field", "current_value", "new_value",
+            "status", "created_at", "reviewed_by", "review_comment"
+        ]
+        read_only_fields = ["user", "status", "created_at", "reviewed_by", "review_comment"]
+
+    def validate_field(self, value):
+        if value not in self.ALLOWED_FIELDS:
+            raise serializers.ValidationError(f"No puedes solicitar cambios en el campo '{value}'.")
+        return value
 
     def create(self, validated_data):
-        """Asigna la fecha actual al registrar un pago"""
-        validated_data["payment_date"] = datetime.today().date()  # 🔹 Fecha actual asignada automáticamente
+        request = self.context["request"]
+        validated_data["user"] = request.user
         return super().create(validated_data)
+    
+    def validate(self, data):
+        user = self.context["request"].user
+        field = data.get("field")
 
-'''
+        if UserChangeRequest.objects.filter(
+            user=user,
+            field=field,
+            status="pending"
+        ).exists():
+            raise serializers.ValidationError(f"Ya tienes una solicitud pendiente para el campo '{field}'.")
+
+        return data
+
+##############################################################################
 
 class RentPaymentSerializer(serializers.ModelSerializer):
     contract = serializers.SerializerMethodField()
@@ -228,32 +245,6 @@ class RentPaymentSerializer(serializers.ModelSerializer):
             "building": obj.contract.room.building.name,
             "room": obj.contract.room.room_number
         }
-
-class LaundryPaymentSerializer(serializers.ModelSerializer):
-    payment_status = serializers.SerializerMethodField()
-
-    class Meta:
-        model = LaundryPaymentHistory
-        fields = [
-            "id", "user", "laundry_booking", "receipt_image",
-            "payment_date", "status", "admin_comment"
-        ]
-        extra_kwargs = {
-            "user": {"read_only": True},
-            "payment_date": {"read_only": True},
-            "status": {"read_only": True},
-            "admin_comment": {"read_only": True}
-        }
-
-    def create(self, validated_data):
-        validated_data["user"] = self.context["request"].user
-        validated_data["payment_date"] = datetime.today().date()
-        validated_data["status"] = "pending_review"
-        return super().create(validated_data)
-
-    def get_payment_status(self, obj):
-        return obj.payment.status if hasattr(obj, "payment") else None
-
 
 ##############################################################################
 

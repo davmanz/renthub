@@ -14,23 +14,23 @@ from rest_framework.permissions import IsAuthenticated
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from core.models import (CustomUser, 
                          Contract, 
-                         RentPaymentHistory,
-                         LaundryPaymentHistory,
+                         RentPaymentHistory,                         
                          Room, 
                          Building,
                          ReferencePerson,
                          DocumentType,
-                         LaundryBooking
+                         LaundryBooking,
+                         UserChangeRequest
                          )
 from core.serializers import (CustomUserSerializer, 
                               ContractSerializer, 
                               RentPaymentSerializer, 
-                              LaundryPaymentSerializer,
                               RoomSerializer, 
                               BuildingSerializer,
                               ReferencePersonSerializer,
                               DocumentTypeSerializer,
                               LaundryBookingSerializer,
+                              UserChangeRequestSerializer
                               )
 
 from datetime import date, timedelta, datetime
@@ -102,39 +102,90 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         return super().destroy(request, *args, **kwargs)
     
-    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """ Devuelve la información del usuario autenticado y su estado de pagos (solo para tenants) """
+        """GET: Devuelve la información del usuario autenticado y su estado de pagos.
+        PATCH: Permite actualizar solo la foto de perfil del usuario autenticado.
+        """
         user = request.user
-        serializer = self.get_serializer(user)
 
-        # Solo los tenants reciben el campo `status_user`
-        status_user = None
-        if user.is_tenant():
-            today = datetime.today()
-            current_year_month = f"{today.year}-{today.month:02d}"
+        if request.method == "GET":
+            serializer = self.get_serializer(user)
 
-            # Obtener todos los contratos del usuario
-            contracts = user.contracts.all()
-            payments = RentPaymentHistory.objects.filter(
-                contract__in=contracts,
-                month_paid__lte=current_year_month
+            # Solo los tenants reciben el campo `status_user`
+            status_user = None
+            if user.is_tenant():
+                today = datetime.today()
+                current_year_month = f"{today.year}-{today.month:02d}"
+
+                # Obtener todos los contratos del usuario
+                contracts = user.contracts.all()
+                payments = RentPaymentHistory.objects.filter(
+                    contract__in=contracts,
+                    month_paid__lte=current_year_month
+                )
+
+                if payments.filter(status="overdue").exists():
+                    status_user = "overdue"
+                elif payments.filter(status="rejected").exists():
+                    status_user = "rejected"
+                elif payments.filter(status="pending_review").exists():
+                    status_user = "pending_review"
+                else:
+                    status_user = "ok"
+
+            response_data = serializer.data
+            if user.is_tenant():
+                response_data["status_user"] = status_user
+
+            return Response(response_data)
+
+        elif request.method == "PATCH":
+            serializer = self.get_serializer(
+                user,
+                data=request.data,
+                partial=True
             )
+            serializer.is_valid(raise_exception=True)
 
-            if payments.filter(status="overdue").exists():
-                status_user = "overdue"
-            elif payments.filter(status="rejected").exists():
-                status_user = "rejected"
-            elif payments.filter(status="pending_review").exists():
-                status_user = "pending_review"
-            else:
-                status_user = "ok"
+            # Asegurarse de que solo se actualice profile_photo
+            allowed_fields = {"profile_photo"}
+            incoming_fields = set(serializer.validated_data.keys())
 
-        response_data = serializer.data
-        if user.is_tenant():
-            response_data["status_user"] = status_user
+            if not incoming_fields.issubset(allowed_fields):
+                return Response(
+                    {"detail": "Solo se permite actualizar la foto de perfil."},
+                    status=400
+                )
 
-        return Response(response_data)
+            serializer.save()
+            return Response(serializer.data)
+    
+    @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated], url_path="change_password")
+    def change_password(self, request):
+        user = request.user
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+        new_password_repeat = request.data.get("new_password_repeat")
+
+        # Validaciones básicas
+        if not all([old_password, new_password, new_password_repeat]):
+            return Response({"detail": "Todos los campos son obligatorios."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not user.check_password(old_password):
+            return Response({"detail": "La contraseña actual es incorrecta."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_password != new_password_repeat:
+            return Response({"detail": "Las nuevas contraseñas no coinciden."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if old_password == new_password:
+            return Response({"detail": "La nueva contraseña no puede ser igual a la anterior."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Si todo está OK, cambiamos la contraseña
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
 
 class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.all()
@@ -170,84 +221,6 @@ class ContractViewSet(viewsets.ModelViewSet):
         return contracts
 
 ##############################################################################
-
-'''
-class PaymentHistoryViewSet(viewsets.ModelViewSet):
-    queryset = PaymentHistory.objects.all()
-    serializer_class = PaymentHistorySerializer
-    permission_classes = [IsTenant]
-
-    def create(self, request, *args, **kwargs):
-        """Solo permite pagos en orden, sin saltarse meses."""
-        user = request.user
-        contract_id = request.data.get("contract")
-        month_paid = request.data.get("month_paid")  # Formato 'YYYY-MM'
-
-        try:
-            contract = Contract.objects.get(id=contract_id, user=user)
-        except Contract.DoesNotExist:
-            return Response({"error": "Contrato no encontrado"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Verificar si hay algún mes impago antes del mes que intenta pagar
-        unpaid_previous_payments = contract.payments.filter(
-            month_paid__lt=month_paid, status__in=["overdue", "pending_review", "pending"]
-        ).exists()
-
-        if unpaid_previous_payments:
-            return Response({"error": "No puedes saltarte meses sin pagar."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Asigna la fecha actual y evita que el usuario la manipule
-        data = request.data.copy()
-        data.pop("payment_date", None)
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-    def update(self, request, *args, **kwargs):
-        if not request.user.is_superadmin():
-            return Response({"detail": "No tienes permiso para modificar pagos."}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        if not request.user.is_superadmin():
-            return Response({"detail": "No tienes permiso para eliminar pagos."}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
-
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
-    def approve_payment(self, request, pk=None):
-        """Aprueba un pago y actualiza el estado del contrato."""
-        payment = self.get_object()
-        payment.status = "approved"
-        payment.save()
-
-        contract = payment.contract
-        if not contract.payments.filter(status="overdue").exists():
-            contract.status = "active"
-            contract.save()
-
-        serializer = PaymentHistorySerializer(payment)  # 🚨 Devuelve el pago actualizado
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
-    def reject_payment(self, request, pk=None):
-        """Rechaza un pago y marca el contrato como vencido si es necesario."""
-        payment = self.get_object()
-        comment = request.data.get("admin_comment", "").strip()
-        if not comment:
-            return Response({"error": "Debes ingresar un motivo de rechazo."}, status=status.HTTP_400_BAD_REQUEST)
-
-        payment.status = "rejected"
-        payment.admin_comment = comment
-        payment.save()
-
-        contract = payment.contract
-        contract.status = "pending"  # 🚨 El contrato queda como pendiente
-        contract.save()
-
-        return Response({"message": "Pago rechazado"}, status=status.HTTP_200_OK)
-'''
 
 class RentPaymentViewSet(viewsets.ModelViewSet):
     queryset = RentPaymentHistory.objects.all()
@@ -312,40 +285,60 @@ class RentPaymentViewSet(viewsets.ModelViewSet):
         payment.save(update_fields=["admin_comment", "status"])
         return Response({"message": "Pago rechazado y marcado como vencido"}, status=status.HTTP_200_OK)
 
-class LaundryPaymentViewSet(viewsets.ModelViewSet):
-    queryset = LaundryPaymentHistory.objects.all()
-    serializer_class = LaundryPaymentSerializer
+class UserChangeRequestViewSet(viewsets.ModelViewSet):
+    queryset = UserChangeRequest.objects.all()
+    serializer_class = UserChangeRequestSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_superadmin() or user.is_admin():
-            return LaundryPaymentHistory.objects.all()
-        return LaundryPaymentHistory.objects.filter(user=user)
+        if user.is_admin() or user.is_superadmin():
+            return UserChangeRequest.objects.all()
+        return UserChangeRequest.objects.filter(user=user)
 
-    def create(self, request, *args, **kwargs):
-        """Crea pago y lo asocia al usuario autenticado"""
-        return super().create(request, *args, **kwargs)
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    @action(detail=True, methods=["patch"])
     def approve(self, request, pk=None):
-        payment = self.get_object()
-        payment.status = "approved"
-        payment.save()
-        return Response({"message": "Pago aprobado"}, status=status.HTTP_200_OK)
+        user = request.user
+        if not user.is_admin() and not user.is_superadmin():
+            return Response({"detail": "No tienes permiso para aprobar."}, status=status.HTTP_403_FORBIDDEN)
 
-    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+        change_request = self.get_object()
+        if change_request.status != "pending":
+            return Response({"detail": "Esta solicitud ya fue procesada."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Aplicar el cambio al usuario
+        setattr(change_request.user, change_request.field, change_request.new_value)
+        change_request.user.save()
+
+        change_request.status = "approved"
+        change_request.reviewed_by = user
+        change_request.save()
+
+        return Response({"detail": "Solicitud aprobada y cambio aplicado."}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["patch"])
     def reject(self, request, pk=None):
-        payment = self.get_object()
-        comment = request.data.get("admin_comment", "")
+        user = request.user
+        if not user.is_admin() and not user.is_superadmin():
+            return Response({"detail": "No tienes permiso para rechazar."}, status=status.HTTP_403_FORBIDDEN)
+
+        comment = request.data.get("review_comment", "").strip()
         if not comment:
-            return Response({"error": "Se requiere un motivo de rechazo"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Debes proporcionar un motivo de rechazo."}, status=status.HTTP_400_BAD_REQUEST)
 
-        payment.status = "rejected"
-        payment.admin_comment = comment
-        payment.save()
-        return Response({"message": "Pago rechazado"}, status=status.HTTP_200_OK)
+        change_request = self.get_object()
+        if change_request.status != "pending":
+            return Response({"detail": "Esta solicitud ya fue procesada."}, status=status.HTTP_400_BAD_REQUEST)
 
+        change_request.status = "rejected"
+        change_request.review_comment = comment
+        change_request.reviewed_by = user
+        change_request.save()
+
+        return Response({"detail": "Solicitud rechazada."}, status=status.HTTP_200_OK)
 
 ##############################################################################
 
@@ -647,24 +640,26 @@ class AdminDashboardView(APIView):
             ).select_related("contract__user", "contract__room__building")
         ]
 
-
     def get_washing_payments(self):
-        """Lista los pagos por uso de lavadora, incluyendo contrato y habitación"""
+        """Lista las reservas de lavadora que contienen comprobante de pago (voucher)"""
+        bookings = LaundryBooking.objects.filter(voucher_image__isnull=False)
+
         return [
             {
                 "user": {
-                    "id": payment.user.id,
-                    "name": f"{payment.user.first_name} {payment.user.last_name}"
+                    "id": booking.user.id,
+                    "name": f"{booking.user.first_name} {booking.user.last_name}"
                 },
                 "booking": {
-                    "id": payment.laundry_booking.id,
-                    "date": payment.laundry_booking.date,
-                    "time_slot": payment.laundry_booking.time_slot
+                    "id": booking.id,
+                    "date": booking.date,
+                    "time_slot": booking.time_slot
                 },
-                "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
-                "status": payment.status
+                "payment_date": booking.created_at.strftime("%Y-%m-%d"),
+                "status": booking.status,
+                "voucher": booking.voucher_image.url if booking.voucher_image else None
             }
-            for payment in LaundryPaymentHistory.objects.all()
+            for booking in bookings
         ]
 
     def get(self, request):
@@ -739,11 +734,4 @@ class RentPaymentDetailView(RetrieveUpdateAPIView):
     queryset = RentPaymentHistory.objects.all()
     serializer_class = RentPaymentSerializer
     permission_classes = [IsAuthenticated]
-
-class LaundryPaymentDetailView(RetrieveUpdateAPIView):
-    queryset = LaundryPaymentHistory.objects.all()
-    serializer_class = LaundryPaymentSerializer
-    permission_classes = [IsAuthenticated]
-
-#####################################################################################
 

@@ -9,8 +9,9 @@ from core.views import (CustomUserViewSet, ContractViewSet,
                         ReferencePersonViewSet,DocumentTypesViewSet,
                         UserDashboardView, AdminDashboardView,
                         LaundryDashboardView, RentPaymentViewSet,
-                        LaundryPaymentViewSet, LaundryBookingViewSet,
-                        RentPaymentDetailView, LaundryPaymentDetailView)
+                        LaundryBookingViewSet,
+                        RentPaymentDetailView,
+                        UserChangeRequestViewSet)
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -20,12 +21,13 @@ router = DefaultRouter()
 router.register(r'users', CustomUserViewSet)
 router.register(r'contracts', ContractViewSet)
 router.register(r'payments/rent', RentPaymentViewSet, basename="rent-payments")
-router.register(r'payments/laundry', LaundryPaymentViewSet, basename="laundry-payments")
 router.register(r'rooms', RoomViewSet)
 router.register(r'buildings', BuildingViewSet)
 router.register(r'references', ReferencePersonViewSet)
 router.register(r'document-types', DocumentTypesViewSet)
 router.register(r"laundry-bookings", LaundryBookingViewSet, basename="laundry-bookings")
+router.register(r'change_requests', UserChangeRequestViewSet, basename='user-change-request')
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -36,7 +38,6 @@ urlpatterns = [
     path("api/admin-dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
     path("api/laundry-dashboard/", LaundryDashboardView.as_view(), name="laundry-dashboard"),
     path("api/payments/rent/<uuid:pk>/", RentPaymentDetailView.as_view(), name="rent-payment-detail"),
-    path("api/payments/laundry/<uuid:pk>/", LaundryPaymentDetailView.as_view(), name="laundry-payment-detail"),
 ]
 
 # Esto sirve los archivos en desarrollo

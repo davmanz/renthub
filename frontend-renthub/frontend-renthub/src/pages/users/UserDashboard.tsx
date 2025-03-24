@@ -5,7 +5,7 @@ import ProfileSummary from "./ProfileSummary";
 import ContractInfo from "./ContractInfo";
 import PaymentHistory from "./PaymentHistory";
 import LaundryBookings from "./LaundryBookings";
-import ChangePassword from "./ChangePassword";
+import ChangePassword from "./SettingsPage";
 
 const UserDashboard = () => {
   const [selectedSection, setSelectedSection] = useState("inicio");

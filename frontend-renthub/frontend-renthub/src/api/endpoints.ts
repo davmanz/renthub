@@ -5,6 +5,7 @@ const endpoints = {
     login: `${API_BASE}/token/`,
     refresh: `${API_BASE}/token/refresh/`,
     me: `${API_BASE}/users/me/`,
+    changePassword: `${API_BASE}/users/change_password/`,
   },
 
   userManagement: {
@@ -43,13 +44,6 @@ const endpoints = {
     createRent: (id: string) =>`${API_BASE}/payments/rent/${id}/`,
     approveRent: (id: string) => `${API_BASE}/payments/rent/${id}/approve/`,
     rejectRent: (id: string) => `${API_BASE}/payments/rent/${id}/reject/`,
-
-    // Lavandería
-    listLaundry: `${API_BASE}/payments/laundry/`,
-    detailLaundry: (id: string) => `${API_BASE}/payments/laundry/${id}/`,
-    createLaundry: `${API_BASE}/payments/laundry/`,
-    approveLaundry: (id: string) => `${API_BASE}/payments/laundry/${id}/approve/`,
-    rejectLaundry: (id: string) => `${API_BASE}/payments/laundry/${id}/reject/`,
   },
 
   laundryManagement: {
@@ -61,7 +55,15 @@ const endpoints = {
     propose: (bookingId: string) => `${API_BASE}/laundry-bookings/${bookingId}/propose/`,
     acceptProposal: (bookingId: string) => `${API_BASE}/laundry-bookings/${bookingId}/accept_proposal/`,
     counterProposal: (bookingId: string) => `${API_BASE}/laundry-bookings/${bookingId}/counter_proposal/`,
-  }
+  },
+
+  changeRequests: {
+    list: `${API_BASE}/change_requests/`, // GET: listar solicitudes (usuario o admin)
+    create: `${API_BASE}/change_requests/`, // POST: crear solicitud (usuario)
+    approve: (id: string) => `${API_BASE}/change_requests/${id}/approve/`, // PATCH: aprobar (admin)
+    reject: (id: string) => `${API_BASE}/change_requests/${id}/reject/`,   // PATCH: rechazar (admin)
+  },
+  
 };
 
 export default endpoints;

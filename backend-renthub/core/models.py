@@ -5,38 +5,58 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from datetime import datetime
 
-
-# Personalizacion de Creacion de SuperUsers
-def create_superuser(self, email, password=None, **extra_fields):
-    extra_fields.setdefault("is_staff", True)
-    extra_fields.setdefault("is_superuser", True)
-    extra_fields.setdefault("role", "superadmin") 
-    return self.create_user(email, password, **extra_fields)
-
 ####################################################################
-#Adecuacion de carga de imagenes
 ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif"]
-MAX_FILE_SIZE_MB = 5  # Tamaño máximo permitido en MB
+MAX_FILE_SIZE_MB = 5
 
-def validate_image_file(value):
-    """Valida que el archivo sea una imagen permitida y no exceda el tamaño máximo"""
-    ext = value.name.split(".")[-1].lower()  # Obtiene la extensión del archivo
+def validate_image_file(file):
+    ext = file.name.split('.')[-1].lower()
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         raise ValidationError(f"Formato no permitido: {ext}. Solo se permiten {', '.join(ALLOWED_IMAGE_EXTENSIONS)}.")
-
-    # Validar tamaño del archivo
-    file_size = value.size
-    max_size_bytes = MAX_FILE_SIZE_MB * 1024 * 1024  # Convertir MB a bytes
-    if file_size > max_size_bytes:
+    
+    max_size = MAX_FILE_SIZE_MB * 1024 * 1024
+    if file.size > max_size:
         raise ValidationError(f"El archivo es demasiado grande. Máximo permitido: {MAX_FILE_SIZE_MB}MB.")
 
+# 🔄 Clase central que reutiliza la lógica de UUID y carpetas
+class UploadPaths:
+    @staticmethod
+    def build_path(folder, filename):
+        ext = filename.split('.')[-1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        return os.path.join(folder, unique_filename)
+
+    @staticmethod
+    def user_photo(instance, filename):
+        return UploadPaths.build_path("users/photos/", filename)
+
+    @staticmethod
+    def contract_photo(instance, filename):
+        return UploadPaths.build_path("contracts/photos/", filename)
+
+    @staticmethod
+    def rent_receipt(instance, filename):
+        return UploadPaths.build_path("payments/rent/", filename)
+
+    @staticmethod
+    def laundry_voucher(instance, filename):
+        return UploadPaths.build_path("laundry/vouchers/", filename)
+
+def user_photo_upload_path(instance, filename):
+    return UploadPaths.user_photo(instance, filename)
+
+def contract_photo_upload_path(instance, filename):
+    return UploadPaths.contract_photo(instance, filename)
+
+def rent_receipt_upload_path(instance, filename):
+    return UploadPaths.rent_receipt(instance, filename)
+
 def laundry_voucher_upload_path(instance, filename):
-    """Genera un nombre de archivo único basado en UUID"""
-    ext = filename.split('.')[-1].lower()  # Obtiene la extensión del archivo y la convierte a minúsculas
-    unique_filename = f"{uuid.uuid4().hex}.{ext}"  # Genera un UUID como nombre del archivo
-    return os.path.join("laundry/vouchers/", unique_filename)
+    return UploadPaths.laundry_voucher(instance, filename)
+
 
 ####################################################################
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -62,18 +82,22 @@ class DocumentType(models.Model):
         return self.name
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, null=False, blank=False)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20)
-
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
     document_number = models.CharField(max_length=50, unique=True)
 
-    profile_photo = models.ImageField(upload_to="users/photos/", blank=True, null=True)
-    id_photo = models.ImageField(upload_to="users/ids/", blank=True, null=True)
-    contract_photo = models.ImageField(upload_to="users/contracts/", blank=True, null=True)
+    profile_photo = models.ImageField(
+        upload_to=user_photo_upload_path,
+        validators=[validate_image_file],
+        blank=True,
+        null=True
+    )
+
 
     ROLE_CHOICES = [
         ("superadmin", "Superadmin"),
@@ -133,6 +157,14 @@ class Contract(models.Model):
     wifi_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    contract_photo = models.ImageField(
+        upload_to=contract_photo_upload_path,
+        validators=[validate_image_file],
+        blank=True,
+        null=True
+    )
+
+
     def save(self, *args, **kwargs):
         """Verifica si la habitación está ocupada antes de crear el contrato"""
         if self._state.adding:  # Solo validar en creación, no en actualización
@@ -155,55 +187,44 @@ class Contract(models.Model):
             self.room.is_occupied = False
             self.room.save(update_fields=["is_occupied"])
 
-###########################################################################
-
-'''
-class PaymentHistory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name="payments")
-    payment_date = models.DateField()
-    month_paid = models.CharField(max_length=20)
-    receipt_image = models.ImageField(upload_to="payments/receipts/", blank=True, null=True)
-    admin_comment = models.TextField(blank=True, null=True)
-
-
+class UserChangeRequest(models.Model):
     STATUS_CHOICES = [
-    ("overdue", "Vencido"),
-    ("pending_review", "En análisis"),
-    ("approved", "Aprobado"),
-    ("rejected", "Rechazado"),
-]
-    
-    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="overdue")
-
-    PAYMENT_TYPES = [
-        ("rent", "Rent Payment"),
-        ("washing", "Laundry Payment"),
+        ("pending", "Pendiente"),
+        ("approved", "Aprobado"),
+        ("rejected", "Rechazado"),
     ]
-    payment_type = models.CharField(max_length=10, choices=PAYMENT_TYPES, default="rent")  # 👈 Nuevo campo
+
+    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="change_requests")
+    field = models.CharField(max_length=50)  # Campo que desea cambiar (ej. 'first_name', 'email')
+    current_value = models.TextField()
+    new_value = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey("core.CustomUser", null=True, blank=True, on_delete=models.SET_NULL, related_name="reviewed_requests")
+    review_comment = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"Pago de {self.contract.user.email} - {self.month_paid}"
+        return f"Solicitud de {self.user.email} - {self.field} → {self.new_value} ({self.status})"
 
-'''
+
+###########################################################################
 
 # RentPaymentHistory - Pago mensual de arriendo
 class RentPaymentHistory(models.Model):
-
-    def rent_voucher_upload_path(instance, filename):
-        ext = filename.split('.')[-1].lower()
-        unique_filename = f"{uuid.uuid4().hex}.{ext}"
-        return os.path.join("payments/rent/", unique_filename)
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     contract = models.ForeignKey("core.Contract", on_delete=models.CASCADE, related_name="rent_payments")
     month_paid = models.CharField(max_length=20)  # Formato "YYYY-MM"
     payment_date = models.DateField(auto_now_add=True)
-    receipt_image = models.ImageField(
-        upload_to=rent_voucher_upload_path,
-        blank=True, null=True,
-        validators=[validate_image_file])
     admin_comment = models.TextField(blank=True, null=True)
+
+    receipt_image = models.ImageField(
+        upload_to=rent_receipt_upload_path,
+        validators=[validate_image_file],
+        blank=True,
+        null=True
+    )
 
     STATUS_CHOICES = [
         ("overdue", "Vencido"),
@@ -215,31 +236,6 @@ class RentPaymentHistory(models.Model):
 
     def __str__(self):
         return f"Rent {self.contract.user.email} - {self.month_paid}"
-
-# LaundryPaymentHistory - Pago por reserva de lavadora
-class LaundryPaymentHistory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="laundry_payments")
-    laundry_booking = models.OneToOneField("core.LaundryBooking", on_delete=models.CASCADE, related_name="payment")
-    payment = models.OneToOneField("core.LaundryPaymentHistory", on_delete=models.CASCADE, null=True, blank=True)
-    payment_date = models.DateField(auto_now_add=True)
-    receipt_image = models.ImageField(
-    upload_to="payments/laundry/",
-    blank=False,
-    null=False,
-    validators=[validate_image_file]  # Puedes usar tu validador actual de imágenes
-)
-    admin_comment = models.TextField(blank=True, null=True)
-
-    STATUS_CHOICES = [
-        ("pending_review", "En análisis"),
-        ("approved", "Aprobado"),
-        ("rejected", "Rechazado"),
-    ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending_review")
-
-    def __str__(self):
-        return f"Laundry {self.user.email} - {self.payment_date}"
 
 ######################################################################################
 class Room(models.Model):
@@ -296,16 +292,16 @@ class LaundryBooking(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="laundry_bookings")
     date = models.DateField()
     time_slot = models.CharField(max_length=20)
-    voucher_image = models.ImageField(
-        upload_to=laundry_voucher_upload_path,
-        blank=False,
-        null=False,
-        validators=[validate_image_file]
-    )
-
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     admin = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_laundry_bookings")
     admin_comment = models.TextField(blank=True, null=True)
+
+    voucher_image = models.ImageField(
+        upload_to=laundry_voucher_upload_path,
+        validators=[validate_image_file],
+        blank=False,
+        null=False
+    )
 
     # Propuesta del administrador
     proposed_date = models.DateField(blank=True, null=True)

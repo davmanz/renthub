@@ -5,6 +5,7 @@ const endpoints = {
     login: `${API_BASE}/token/`,
     refresh: `${API_BASE}/token/refresh/`,
     me: `${API_BASE}/users/me/`,
+    changePassword: `${API_BASE}/users/change_password/`,
   },
 
   userManagement: {
@@ -31,9 +32,9 @@ const endpoints = {
   },
 
   dashboard: {
-    user: `${API_BASE}/user-dashboard/`,
+    //user: `${API_BASE}/user-dashboard/`,
     admin: `${API_BASE}/admin-dashboard/`,
-    laundry: `${API_BASE}/laundry-dashboard/`,
+    //laundry: `${API_BASE}/laundry-dashboard/`,
   },
 
   payments: {
@@ -65,3 +66,4 @@ const endpoints = {
 };
 
 export default endpoints;
+
