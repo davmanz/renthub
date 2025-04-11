@@ -4,6 +4,10 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    )
 from core.views import (CustomUserViewSet, ContractViewSet, 
                         RoomViewSet, BuildingViewSet, 
                         ReferencePersonViewSet,DocumentTypesViewSet,
@@ -11,11 +15,9 @@ from core.views import (CustomUserViewSet, ContractViewSet,
                         LaundryDashboardView, RentPaymentViewSet,
                         LaundryBookingViewSet,
                         RentPaymentDetailView,
-                        UserChangeRequestViewSet)
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+                        UserChangeRequestViewSet
+                        )
+
 
 router = DefaultRouter()
 router.register(r'users', CustomUserViewSet)

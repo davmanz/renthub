@@ -117,15 +117,15 @@ const AdminDashboard = () => {
                 <Grid container spacing={2} sx={{ mt: 1 }}>
                   <Grid item xs={4}>
                     <Typography variant="body1" align="center"><strong>Total</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.summary.washing_payments_count ?? 0}</Typography>
+                    <Typography variant="h5" align="center">{data?.washing_payments.qtyAll ?? 0}</Typography>
                   </Grid>
                   <Grid item xs={4}>
                     <Typography variant="body1" align="center"><strong>Pend. Usuario</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.summary.laundry_pending_user ?? 0}</Typography>
+                    <Typography variant="h5" align="center">{data?.washing_payments.qtyPendingByUser ?? 0}</Typography>
                   </Grid>
                   <Grid item xs={4}>
                     <Typography variant="body1" align="center"><strong>Pend. Admin</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.summary.laundry_pending_admin ?? 0}</Typography>
+                    <Typography variant="h5" align="center">{data?.washing_payments.qtyPendingByAdmin ?? 0}</Typography>
                   </Grid>
                 </Grid>
               </CardContent>

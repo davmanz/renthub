@@ -643,24 +643,15 @@ class AdminDashboardView(APIView):
     def get_washing_payments(self):
         """Lista las reservas de lavadora que contienen comprobante de pago (voucher)"""
         bookings = LaundryBooking.objects.filter(voucher_image__isnull=False)
+        qtyAll = bookings.count()
+        qtyPendingByAdmin = bookings.filter(last_action_by="user", status="pending").count()
+        qtyPendingByUser = bookings.filter(last_action_by="admin", ).count()
 
-        return [
-            {
-                "user": {
-                    "id": booking.user.id,
-                    "name": f"{booking.user.first_name} {booking.user.last_name}"
-                },
-                "booking": {
-                    "id": booking.id,
-                    "date": booking.date,
-                    "time_slot": booking.time_slot
-                },
-                "payment_date": booking.created_at.strftime("%Y-%m-%d"),
-                "status": booking.status,
-                "voucher": booking.voucher_image.url if booking.voucher_image else None
-            }
-            for booking in bookings
-        ]
+        return {            
+                "qtyAll": qtyAll,
+                "qtyPendingByAdmin": qtyPendingByAdmin,
+                "qtyPendingByUser": qtyPendingByUser                
+        }
 
     def get(self, request):
         """Retorna la información del dashboard de administrador con la estructura corregida"""
@@ -672,7 +663,6 @@ class AdminDashboardView(APIView):
             "summary": {
                 "unpaid_users_count": len(unpaid_users),
                 "unverified_payments_count": len(unverified_payments),
-                "washing_payments_count": len(washing_payments)
             },
             "unpaid_users": unpaid_users,
             "unverified_payments": unverified_payments,
