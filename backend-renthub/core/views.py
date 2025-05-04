@@ -37,12 +37,22 @@ from datetime import date, timedelta, datetime
 from uuid import uuid4
 
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 def send_email_activate(user):
-        url = f"{settings.FRONTEND_URL}/verify-account/{user.email_verification_token}"
-        mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
-        send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
+    url = f"{settings.FRONTEND_URL}/verify-account/{user.email_verification_token}"
+    mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
+    send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
 
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
@@ -77,20 +87,18 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
 
     def get_queryset(self):
-        """Restringe la visibilidad según el rol y permite filtrar por ?role=tenant o ?role=admin"""
         user = self.request.user
-        queryset = CustomUser.objects.all()
+        queryset = CustomUser.objects.filter(is_verified=True)
 
-        # Aplicar restricciones según el rol del usuario
-        if user.is_admin():
-            queryset = queryset.filter(role="tenant")  # Solo ve Tenants
+        # 🔐 RESTRICCIÓN POR ROL
+        if user.is_superadmin():
+            pass  # Puede ver todo
+        elif user.is_admin():
+            queryset = queryset.filter(role="tenant")
         elif user.is_tenant():
-            queryset = queryset.filter(id=user.id)  # Solo ve su propio perfil
-
-        # Permitir filtrar por rol usando ?role=tenant o ?role=admin
-        role = self.request.query_params.get("role", None)
-        if role:
-            queryset = queryset.filter(role=role)
+            queryset = queryset.filter(id=user.id)
+        else:
+            queryset = queryset.none()
 
         return queryset
 
@@ -204,6 +212,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.all()
     serializer_class = ContractSerializer
@@ -237,8 +250,11 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         return contracts
 
-##############################################################################
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class RentPaymentViewSet(viewsets.ModelViewSet):
     queryset = RentPaymentHistory.objects.all()
     serializer_class = RentPaymentSerializer
@@ -302,6 +318,12 @@ class RentPaymentViewSet(viewsets.ModelViewSet):
         payment.save(update_fields=["admin_comment", "status"])
         return Response({"message": "Pago rechazado y marcado como vencido"}, status=status.HTTP_200_OK)
 
+
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class UserChangeRequestViewSet(viewsets.ModelViewSet):
     queryset = UserChangeRequest.objects.all()
     serializer_class = UserChangeRequestSerializer
@@ -357,8 +379,11 @@ class UserChangeRequestViewSet(viewsets.ModelViewSet):
 
         return Response({"detail": "Solicitud rechazada."}, status=status.HTTP_200_OK)
 
-##############################################################################
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
@@ -388,6 +413,11 @@ class RoomViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(available_rooms, many=True)
         return Response(serializer.data)
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class BuildingViewSet(viewsets.ModelViewSet):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
@@ -417,7 +447,11 @@ class BuildingViewSet(viewsets.ModelViewSet):
         serializer = RoomSerializer(unoccupied_rooms, many=True)
         return Response(serializer.data)
 
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class ReferencePersonViewSet(viewsets.ModelViewSet):
     queryset = ReferencePerson.objects.all()
     serializer_class = ReferencePersonSerializer
@@ -438,11 +472,21 @@ class ReferencePersonViewSet(viewsets.ModelViewSet):
 
         return super().create(request, *args, **kwargs)
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class DocumentTypesViewSet(ReadOnlyModelViewSet):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
     permission_classes = [IsAdmin]
 
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class LaundryBookingViewSet(viewsets.ModelViewSet):
     queryset = LaundryBooking.objects.all()
     serializer_class = LaundryBookingSerializer
@@ -556,9 +600,11 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.save()
         return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
 
-
-#DASHBOARD
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class UserDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -606,7 +652,11 @@ class UserDashboardView(APIView):
             status=status.HTTP_200_OK,
         )
 
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated, IsAdmin]  # Solo Admins y Superadmins pueden acceder
 
@@ -686,7 +736,11 @@ class AdminDashboardView(APIView):
             "washing_payments": washing_payments
         })
 
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class LaundryDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -734,15 +788,21 @@ class LaundryDashboardView(APIView):
             "bookings": self.get_bookings(request.user)
         })
 
-#####################################################################################
-# CAMBIOS DE  PaymentDetailView
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class RentPaymentDetailView(RetrieveUpdateAPIView):
     queryset = RentPaymentHistory.objects.all()
     serializer_class = RentPaymentSerializer
     permission_classes = [IsAuthenticated]
 
-
+########################################################################################################
+####                                                                                                ####
+####            VISTA DE USUARIOS                                                                   ####
+####                                                                                                ####
+########################################################################################################
 class VerifyAcountView(APIView):
     def get(self, request, token):
         try:

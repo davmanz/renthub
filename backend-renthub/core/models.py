@@ -87,13 +87,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True, null=False, blank=False)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
-    phone_number = models.CharField(max_length=20)
+    phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False)
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
-    document_number = models.CharField(max_length=50, unique=True)
+    document_number = models.CharField(max_length=50, unique=True, null=False, blank=False)
     is_verified = models.BooleanField(default=False)
-    email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
+    is_active = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, null=True)
     
-
     profile_photo = models.ImageField(
         upload_to=user_photo_upload_path,
         validators=[validate_image_file],
@@ -107,9 +108,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ("tenant", "Tenant"),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="tenant")
-
-    is_active = models.BooleanField(default=False)
-    is_staff = models.BooleanField(default=False)
 
     # Referencias opcionales para todos los usuarios
     reference_1 = models.ForeignKey(
