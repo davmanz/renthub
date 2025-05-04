@@ -1,4 +1,3 @@
-
 from core.models import (Contract ,
                          CustomUser, 
                          RentPaymentHistory)
@@ -6,6 +5,7 @@ from datetime import date
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 import os
+
 @receiver(post_delete, sender=Contract)
 def release_room_if_empty(sender, instance, **kwargs):
     """
@@ -32,8 +32,6 @@ def delete_file_if_exists(file_field):
 @receiver(post_delete, sender=CustomUser)
 def delete_user_images(sender, instance, **kwargs):
     delete_file_if_exists(instance.profile_photo)
-    delete_file_if_exists(instance.id_photo)
-    delete_file_if_exists(instance.contract_photo)
 
 @receiver(post_delete, sender=RentPaymentHistory)
 def delete_rent_receipt(sender, instance, **kwargs):

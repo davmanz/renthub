@@ -15,7 +15,8 @@ from core.views import (CustomUserViewSet, ContractViewSet,
                         LaundryDashboardView, RentPaymentViewSet,
                         LaundryBookingViewSet,
                         RentPaymentDetailView,
-                        UserChangeRequestViewSet
+                        UserChangeRequestViewSet,
+                        VerifyAcountView
                         )
 
 
@@ -40,6 +41,7 @@ urlpatterns = [
     path("api/admin-dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
     path("api/laundry-dashboard/", LaundryDashboardView.as_view(), name="laundry-dashboard"),
     path("api/payments/rent/<uuid:pk>/", RentPaymentDetailView.as_view(), name="rent-payment-detail"),
+    path("api/verify-account/<uuid:token>/", VerifyAcountView.as_view(), name="verify-account"),
 ]
 
 # Esto sirve los archivos en desarrollo

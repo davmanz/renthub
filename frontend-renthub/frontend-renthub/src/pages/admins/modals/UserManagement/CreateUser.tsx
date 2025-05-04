@@ -123,6 +123,12 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
     }
   };
 
+  const getReferenceFullName = (referenceId: string) => {
+    const ref = availableReferences.find((ref) => ref.id === referenceId);
+    return ref ? `${ref.first_name} ${ref.last_name}` : "Referencia no encontrada";
+  };
+  
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle>{userToEdit ? "Editar Usuario" : "Crear Usuario"}</DialogTitle>
@@ -175,19 +181,33 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }) => {
 
           {formData.references_count > 0 && (
             <Grid item xs={12}>
-              <Button fullWidth variant="outlined" onClick={() => handleReferenceSelection("reference_1")}>
-                Seleccionar Referencia 1
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => handleReferenceSelection("reference_1")}
+              >
+                {formData.reference_1
+                  ? getReferenceFullName(formData.reference_1)
+                  : "Seleccionar Referencia 1"}
+
               </Button>
             </Grid>
           )}
 
           {formData.references_count > 1 && (
             <Grid item xs={12}>
-              <Button fullWidth variant="outlined" onClick={() => handleReferenceSelection("reference_2")}>
-                Seleccionar Referencia 2
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => handleReferenceSelection("reference_2")}
+              >
+                {formData.reference_2
+                  ? getReferenceFullName(formData.reference_2)
+                  : "Seleccionar Referencia 2"}
               </Button>
             </Grid>
           )}
+
         </Grid>
       </DialogContent>
       <DialogActions>

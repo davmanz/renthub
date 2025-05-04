@@ -1,7 +1,7 @@
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
-from datetime import date
-
+from core.utils.gmail_api import send_gmail_api_email
+from django.conf import settings
 
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -34,11 +34,20 @@ from core.serializers import (CustomUserSerializer,
                               )
 
 from datetime import date, timedelta, datetime
+from uuid import uuid4
+
+
+def send_email_activate(user):
+        url = f"{settings.FRONTEND_URL}/verify-account/{user.email_verification_token}"
+        mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
+        send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
+
 
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [IsAuthenticated]
+
 
     @method_decorator(ratelimit(key="ip", rate="5/m", method="POST", block=True))
     def create(self, request, *args, **kwargs):
@@ -52,12 +61,20 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         # Verifica que si un admin crea un usuario, solo puede ser un 'tenant'
         if user.is_admin() and request.data.get("role") in ["admin", "superadmin"]:
             return Response({"detail": "No puedes crear este tipo de usuario."}, status=status.HTTP_403_FORBIDDEN)
-
+        
+    
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()  # 🔹 Aquí ya se maneja la contraseña correctamente en el serializer
+        instance = serializer.save()
+
+        # Si el rol es 'tenant', se genera el token y se envía el correo de activación
+        if instance.role == "tenant":
+            instance.email_verification_token = uuid4()
+            instance.save(update_fields=["email_verification_token"])
+            send_email_activate(instance)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     def get_queryset(self):
         """Restringe la visibilidad según el rol y permite filtrar por ?role=tenant o ?role=admin"""
@@ -725,3 +742,14 @@ class RentPaymentDetailView(RetrieveUpdateAPIView):
     serializer_class = RentPaymentSerializer
     permission_classes = [IsAuthenticated]
 
+
+class VerifyAcountView(APIView):
+    def get(self, request, token):
+        try:
+            user = CustomUser.objects.get(email_verification_token=token)
+            user.is_verified = True
+            user.email_verification_token = None
+            user.save()
+            return Response({"detail": "Cuenta activada correctamente"}, status=200)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "Token inválido o expirado"}, status=400)

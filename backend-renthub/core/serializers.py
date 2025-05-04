@@ -18,7 +18,12 @@ class ReferencePersonSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class CustomUserSerializer(serializers.ModelSerializer):
+
+    # Campos de solo lectura
     password = serializers.CharField(write_only=True)
+    is_verified = serializers.BooleanField(read_only=True)
+    date_joined = serializers.DateTimeField(read_only=True)
+    role = serializers.CharField(read_only=True)
 
     # GET: Devolverá objetos completos
     document_type = serializers.SerializerMethodField()
@@ -47,6 +52,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "is_active", "date_joined",
             "reference_1", "reference_1_id",  # GET: Objeto | POST/PUT: ID
             "reference_2", "reference_2_id",  # GET: Objeto | POST/PUT: ID
+            "is_verified"
         ]
 
     def create(self, validated_data):
@@ -98,6 +104,25 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 "phone_number": obj.reference_2.phone_number
             }
         return None
+    
+    def validate_document_number(self, value):
+        user = self.instance  # Si estamos actualizando un usuario existente
+        if CustomUser.objects.filter(document_number=value).exclude(id=getattr(user, "id", None)).exists():
+            raise serializers.ValidationError("Este número de documento ya está registrado.")
+        return value
+    
+    def validate_phone_number(self, value):
+        user = self.instance  # Puede ser None si es creación
+        if CustomUser.objects.filter(phone_number=value).exclude(id=getattr(user, "id", None)).exists():
+            raise serializers.ValidationError("Este número de teléfono ya está registrado.")
+        return value
+    
+    def validate_email(self, value):
+        user = self.instance
+        if CustomUser.objects.filter(email=value).exclude(id=getattr(user, "id", None)).exists():
+            raise serializers.ValidationError("Este correo ya está registrado.")
+        return value
+
 
 class ContractSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()

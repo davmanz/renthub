@@ -1,7 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
 import environ
-
 import os
 
 # Gestion de Imagenes
@@ -11,8 +10,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-
-
 # SECURITY WARNING: keep the secret key used in production secret!
 env = environ.Env()
 environ.Env.read_env(os.path.join(BASE_DIR, '.env')) 
@@ -20,7 +17,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
@@ -161,9 +158,12 @@ AXES_COOLOFF_TIME = 1  # 1 hora bloqueado
 AXES_LOCKOUT_PARAMETERS = ["ip_address"]  # Bloqueo por IP
 AXES_RESET_ON_SUCCESS = True  # Resetea intentos después de un login exitoso
 
-# Configuracion de Cors
+# Configuracion de CORS
+FRONTEND_URL = env("FRONTEND_URL")
+
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # 👈 Permitir solicitudes desde el frontend
+    FRONTEND_URL,  # 👈 Permitir solicitudes desde el frontend
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Para permitir el envío de cookies y headers de autenticación
+

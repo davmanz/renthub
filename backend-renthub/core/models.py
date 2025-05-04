@@ -90,6 +90,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(max_length=20)
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
     document_number = models.CharField(max_length=50, unique=True)
+    is_verified = models.BooleanField(default=False)
+    email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
+    
 
     profile_photo = models.ImageField(
         upload_to=user_photo_upload_path,
@@ -98,7 +101,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         null=True
     )
 
-
     ROLE_CHOICES = [
         ("superadmin", "Superadmin"),
         ("admin", "Admin"),
@@ -106,7 +108,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="tenant")
 
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
     # Referencias opcionales para todos los usuarios
@@ -136,7 +138,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.role == "superadmin"
 
     def is_admin(self):
-        return self.role in ["admin"]
+        return self.role in "admin"
 
     def is_tenant(self):
         return self.role == "tenant"
