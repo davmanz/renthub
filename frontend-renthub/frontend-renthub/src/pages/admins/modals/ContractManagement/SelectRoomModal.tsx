@@ -1,13 +1,31 @@
 import { useState, useEffect } from "react";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
-import { Dialog, DialogTitle, DialogContent, TextField, List, ListItem, DialogActions, Button, MenuItem, Select } from "@mui/material";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, List, ListItem, Button, MenuItem, Select, InputLabel, FormControl
+} from "@mui/material";
 
-const SelectRoomModal = ({ open, onClose, onSelect }) => {
-  const [buildings, setBuildings] = useState([]);
+interface Building {
+  id: string;
+  name: string;
+}
+
+interface Room {
+  id: string;
+  room_number: string;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (room: Room) => void;
+}
+
+const SelectRoomModal = ({ open, onClose, onSelect }: Props) => {
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState("");
-  const [rooms, setRooms] = useState([]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -18,36 +36,30 @@ const SelectRoomModal = ({ open, onClose, onSelect }) => {
 
   useEffect(() => {
     if (selectedBuilding) {
-      setSelectedRoom(null);  // Limpiar selección de room si cambia el building
-      setRooms([]);  // Limpiar habitaciones antes de la nueva carga
-      api.get(`${endpoints.contractManagement.rommsAvaible}?building_id=${selectedBuilding}`)
+      setRooms([]);
+      api.get(endpoints.contractManagement.roomsAvailable(selectedBuilding))
         .then(response => setRooms(response.data))
         .catch(console.error);
     }
   }, [selectedBuilding]);
 
-  const handleRoomSelect = (room) => {
-    setSelectedRoom(room);
-    onSelect(room.id);
-  };
-
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle>Seleccionar Habitación</DialogTitle>
       <DialogContent>
-        <Select
-          fullWidth
-          value={selectedBuilding}
-          onChange={(e) => setSelectedBuilding(e.target.value)}
-          displayEmpty
-        >
-          <MenuItem value="" disabled>Seleccionar Building</MenuItem>
-          {buildings.map(building => (
-            <MenuItem key={building.id} value={building.id}>
-              {building.name}
-            </MenuItem>
-          ))}
-        </Select>
+        <FormControl fullWidth margin="dense">
+          <InputLabel>Edificio</InputLabel>
+          <Select
+            value={selectedBuilding}
+            onChange={(e) => setSelectedBuilding(e.target.value)}
+          >
+            {buildings.map(building => (
+              <MenuItem key={building.id} value={building.id}>
+                {building.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         {selectedBuilding && (
           <>
@@ -62,12 +74,7 @@ const SelectRoomModal = ({ open, onClose, onSelect }) => {
               {rooms
                 .filter(room => room.room_number.includes(search))
                 .map(room => (
-                  <ListItem
-                    key={room.id}
-                    button
-                    selected={selectedRoom?.id === room.id}
-                    onClick={() => handleRoomSelect(room)}
-                  >
+                  <ListItem key={room.id} button onClick={() => onSelect(room)}>
                     Habitación {room.room_number}
                   </ListItem>
                 ))}
