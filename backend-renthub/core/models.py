@@ -5,7 +5,11 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from datetime import datetime
 
-####################################################################
+########################################################################################################
+####                                                                                                ####
+####                 Validaciones para la carga de imagenes y archivos                              ####
+####                                                                                                ####
+########################################################################################################
 ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif"]
 MAX_FILE_SIZE_MB = 5
 
@@ -18,7 +22,11 @@ def validate_image_file(file):
     if file.size > max_size:
         raise ValidationError(f"El archivo es demasiado grande. Máximo permitido: {MAX_FILE_SIZE_MB}MB.")
 
-# 🔄 Clase central que reutiliza la lógica de UUID y carpetas
+########################################################################################################
+####                                                                                                ####
+####                      Clase para gestionar carag de imagenes                                    ####
+####                                                                                                ####
+########################################################################################################
 class UploadPaths:
     @staticmethod
     def build_path(folder, filename):
@@ -55,9 +63,11 @@ def laundry_voucher_upload_path(instance, filename):
     return UploadPaths.laundry_voucher(instance, filename)
 
 
-####################################################################
-
-
+########################################################################################################
+####                                                                                                ####
+####                 Gestor de usuarios personalizados para la autenticación                        ####
+####                                                                                                ####
+########################################################################################################
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -74,6 +84,11 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('role', 'superadmin')
         return self.create_user(email, password, **extra_fields)
 
+########################################################################################################
+####                                                                                                ####
+####            Modelo para gestionar los tipos de documentos de los usuarios                       ####
+####                                                                                                ####
+########################################################################################################
 class DocumentType(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, unique=True)
@@ -81,6 +96,11 @@ class DocumentType(models.Model):
     def __str__(self):
         return self.name
 
+########################################################################################################
+####                                                                                                ####
+####                     Modelo para gestionar los usuarios del sistema                             ####
+####                                                                                                ####
+########################################################################################################
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -93,7 +113,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
-    email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, null=True)
+    email_verification_token = models.CharField(max_length=100, editable=False, null=True, blank=True)
     
     profile_photo = models.ImageField(
         upload_to=user_photo_upload_path,
@@ -144,6 +164,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+########################################################################################################
+####                                                                                                ####
+####            Modelo para gestionar los contratos de alquiler de los inquilinos                   ####
+####                                                                                                ####
+########################################################################################################
 class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="contracts")
@@ -187,6 +212,11 @@ class Contract(models.Model):
             self.room.is_occupied = False
             self.room.save(update_fields=["is_occupied"])
 
+########################################################################################################
+####                                                                                                ####
+####            Modelo para gestionar las solicitudes de cambio de datos de los usuarios            ####
+####                                                                                                ####
+########################################################################################################
 class UserChangeRequest(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pendiente"),
@@ -207,28 +237,28 @@ class UserChangeRequest(models.Model):
     def __str__(self):
         return f"Solicitud de {self.user.email} - {self.field} → {self.new_value} ({self.status})"
 
-
-###########################################################################
-
-# RentPaymentHistory - Pago mensual de arriendo
+########################################################################################################
+####                                                                                                ####
+####            Modelo para gestionar el historial de pagos de alquileres                           ####
+####                                                                                                ####
+########################################################################################################
 class RentPaymentHistory(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     contract = models.ForeignKey("core.Contract", on_delete=models.CASCADE, related_name="rent_payments")
-    month_paid = models.CharField(max_length=20)  # Formato "YYYY-MM"
+    month_paid = models.CharField(max_length=20)
     payment_date = models.DateField(auto_now_add=True)
     admin_comment = models.TextField(blank=True, null=True)
-
     receipt_image = models.ImageField(
         upload_to=rent_receipt_upload_path,
         validators=[validate_image_file],
         blank=True,
         null=True
     )
-
     STATUS_CHOICES = [
         ("overdue", "Vencido"),
         ("pending_review", "En análisis"),
+        ("upcoming", "Pendiente"),
         ("approved", "Aprobado"),
         ("rejected", "Rechazado"),
     ]
@@ -237,7 +267,11 @@ class RentPaymentHistory(models.Model):
     def __str__(self):
         return f"Rent {self.contract.user.email} - {self.month_paid}"
 
-######################################################################################
+########################################################################################################
+####                                                                                                ####
+####                   Modelo para gestionar las habitaciones de los edificios                      ####
+####                                                                                                ####
+########################################################################################################
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     building = models.ForeignKey("core.Building", on_delete=models.CASCADE, related_name="rooms")
@@ -247,6 +281,11 @@ class Room(models.Model):
     def __str__(self):
         return f"{self.building.name} - {self.room_number}"
 
+########################################################################################################
+####                                                                                                ####
+####                            Modelo para gestionar los edificios                                 ####
+####                                                                                                ####
+########################################################################################################
 class Building(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
@@ -256,6 +295,11 @@ class Building(models.Model):
     def __str__(self):
         return self.name
 
+########################################################################################################
+####                                                                                                ####
+####            Modelo para gestionar a los usuarios de referencia de los inquilinos                ####
+####                                                                                                ####
+########################################################################################################
 class ReferencePerson(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=100)
@@ -267,6 +311,11 @@ class ReferencePerson(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.document_number})"
 
+########################################################################################################
+####                                                                                                ####
+####                   Modelo para gestionar las reservas de lavandería                             ####
+####                                                                                                ####
+########################################################################################################
 class LaundryBooking(models.Model):
     
     STATUS_CHOICES = [

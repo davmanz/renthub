@@ -1,6 +1,6 @@
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
-from core.utils.gmail_api import send_gmail_api_email
+from django.core.cache import cache
 from django.conf import settings
 
 from rest_framework import viewsets, status
@@ -9,8 +9,9 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.response import Response
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
+from core.utils.gmail_api import send_gmail_api_email
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from core.models import (CustomUser, 
                          Contract, 
@@ -35,6 +36,7 @@ from core.serializers import (CustomUserSerializer,
 
 from datetime import date, timedelta, datetime
 from uuid import uuid4
+import re
 
 
 ########################################################################################################
@@ -79,12 +81,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         # Si el rol es 'tenant', se genera el token y se envía el correo de activación
         if instance.role == "tenant":
-            instance.email_verification_token = uuid4()
+            instance.email_verification_token = f'{instance.first_name}-{instance.last_name}-{uuid4()}'
             instance.save(update_fields=["email_verification_token"])
             send_email_activate(instance)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
     def get_queryset(self):
         user = self.request.user
@@ -317,7 +318,6 @@ class RentPaymentViewSet(viewsets.ModelViewSet):
         payment.admin_comment = comment
         payment.save(update_fields=["admin_comment", "status"])
         return Response({"message": "Pago rechazado y marcado como vencido"}, status=status.HTTP_200_OK)
-
 
 ########################################################################################################
 ####                                                                                                ####
@@ -658,30 +658,10 @@ class UserDashboardView(APIView):
 ####                                                                                                ####
 ########################################################################################################
 class AdminDashboardView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]  # Solo Admins y Superadmins pueden acceder
+    permission_classes = [IsAuthenticated, IsAdmin]
 
-    def get_unpaid_users(self):
-        """Obtiene la lista de usuarios con pagos vencidos, en revisión o rechazados hasta el mes actual"""
-        current_month = datetime.today().strftime("%Y-%m")
-
-        unpaid_users = CustomUser.objects.filter(
-            contracts__rent_payments__status__in=["overdue", "pending_review", "rejected"],
-            contracts__rent_payments__month_paid__lte=current_month
-        ).distinct().values("id", "first_name", "last_name", "email")
-
-        return [
-            {
-                "id": user["id"],
-                "name": f"{user['first_name']} {user['last_name']}",
-                "email": user["email"]
-            }
-            for user in unpaid_users
-        ]
-
-    def get_unverified_payments(self):
-        """Lista los pagos que tienen comprobante y están pendientes de aprobación"""
-        current_month = datetime.today().strftime("%Y-%m")
-
+    def get_rent_payments_by_status(self, status):
+        """Retorna pagos de arriendo filtrados por estado"""
         return [
             {
                 "id": payment.id,
@@ -697,44 +677,47 @@ class AdminDashboardView(APIView):
                 "month_paid": payment.month_paid,
                 "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
                 "status": payment.status,
-                "receipt_path": payment.receipt_image.url if payment.receipt_image else None
-                
+                "voucher_path": payment.receipt_image.url if payment.receipt_image else None,
+                "admin_comment": payment.admin_comment
             }
-            for payment in RentPaymentHistory.objects.filter(
-                status="pending_review",
-                receipt_image__isnull=False,
-                month_paid__lte=current_month
-            ).select_related("contract__user", "contract__room__building")
+            for payment in RentPaymentHistory.objects.filter(status=status)
+            .select_related("contract__user", "contract__room__building")
         ]
 
-    def get_washing_payments(self):
-        """Lista las reservas de lavadora que contienen comprobante de pago (voucher)"""
-        bookings = LaundryBooking.objects.filter(voucher_image__isnull=False)
-        qtyAll = bookings.count()
-        qtyPendingByAdmin = bookings.filter(last_action_by="user", status="pending").count()
-        qtyPendingByUser = bookings.filter(last_action_by="admin", ).count()
-
-        return {            
-                "qtyAll": qtyAll,
-                "qtyPendingByAdmin": qtyPendingByAdmin,
-                "qtyPendingByUser": qtyPendingByUser                
-        }
+    def get_laundry_pending_by(self, last_actor):
+        """Retorna reservas de lavandería donde se espera respuesta del actor contrario"""
+        return [
+            {
+                "id": booking.id,
+                "user": {
+                    "id": booking.user.id,
+                    "name": f"{booking.user.first_name} {booking.user.last_name}"
+                },
+                "date": booking.date.strftime("%Y-%m-%d"),
+                "time_slot": booking.time_slot,
+                "status": booking.status,
+                "voucher_path": booking.voucher_image.url,
+                "admin_comment": booking.admin_comment,
+            }
+            for booking in LaundryBooking.objects.filter(
+                last_action_by=last_actor,
+                status__in=["pending", "proposed", "counter_proposal"]
+            ).select_related("user")
+        ]
 
     def get(self, request):
-        """Retorna la información del dashboard de administrador con la estructura corregida"""
-        unpaid_users = self.get_unpaid_users()
-        unverified_payments = self.get_unverified_payments()
-        washing_payments = self.get_washing_payments()
-
         return Response({
-            "summary": {
-                "unpaid_users_count": len(unpaid_users),
-                "unverified_payments_count": len(unverified_payments),
+            "rents_pendings": {
+                "pays_reject": self.get_rent_payments_by_status("rejected"),
+                "pays_overdue": self.get_rent_payments_by_status("overdue"),
+                "pays_pending_review": self.get_rent_payments_by_status("pending_review"),
             },
-            "unpaid_users": unpaid_users,
-            "unverified_payments": unverified_payments,
-            "washing_payments": washing_payments
+            "washing_pendings": {
+                "pending_user": self.get_laundry_pending_by("admin"),
+                "pending_admin": self.get_laundry_pending_by("user"),
+            }
         })
+
 
 ########################################################################################################
 ####                                                                                                ####
@@ -803,13 +786,82 @@ class RentPaymentDetailView(RetrieveUpdateAPIView):
 ####            VISTA DE USUARIOS                                                                   ####
 ####                                                                                                ####
 ########################################################################################################
-class VerifyAcountView(APIView):
+class VerifyAccountView(APIView):
+    permission_classes = [AllowAny]
+    
+    """Vista para verificar cuentas de usuario a través del token enviado por email"""
+    
+    def validate_token(self, token):
+        """Valida el formato del token y previene inyecciones"""
+        # Formato esperado: firstname-lastname-uuid
+        # Nueva expresión regular más estricta
+        token_pattern = r'^[a-zA-Z0-9]+\-[a-zA-Z0-9]+\-[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$'
+        
+        # Validaciones de seguridad
+        if not token or len(token) > 100:  # Limitar longitud
+            return False
+            
+        if '..' in token or '//' in token:  # Prevenir path traversal
+            return False
+            
+        if any(char in token for char in '<>{}[]'):  # Prevenir caracteres especiales
+            return False
+            
+        if "'" in token or '"' in token:  # Prevenir SQL injection
+            return False
+            
+        return bool(re.match(token_pattern, token))
+
+    @method_decorator(ratelimit(key="ip", rate="5/h", method="GET", block=True))
     def get(self, request, token):
+        # Sanitizar y validar el token
+        token = str(token).strip()
+        if not self.validate_token(token):
+            return Response(
+                {"detail": "Formato de token inválido o caracteres no permitidos"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Prevenir múltiples intentos con el mismo token
+        cache_key = f'verify_attempt_{token}'
+        attempt_count = cache.get(cache_key, 0)
+        
+        if attempt_count >= 3:  # Máximo 3 intentos por token
+            return Response(
+                {"detail": "Demasiados intentos. Por favor, solicita un nuevo token."}, 
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
         try:
+            print(token)
             user = CustomUser.objects.get(email_verification_token=token)
+            
+            # Verificar si el token ya fue usado
+            if user.is_verified:
+                return Response(
+                    {"detail": "Esta cuenta ya fue verificada anteriormente"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Activar la cuenta
             user.is_verified = True
-            user.email_verification_token = None
+            user.is_active = True
+            user.email_verification_token = None  # Invalidar token después de uso
             user.save()
-            return Response({"detail": "Cuenta activada correctamente"}, status=200)
+
+            # Limpiar el cache para este token
+            cache.delete(cache_key)
+
+            return Response(
+                {"detail": "Cuenta verificada correctamente"}, 
+                status=status.HTTP_200_OK
+            )
+
         except CustomUser.DoesNotExist:
-            return Response({"detail": "Token inválido o expirado"}, status=400)
+            # Registrar intento fallido
+            cache.set(cache_key, attempt_count + 1, 900)  # 15 minutos de timeout
+            
+            return Response(
+                {"detail": "Token inválido o expirado"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )

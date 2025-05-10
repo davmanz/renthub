@@ -1,41 +1,42 @@
+// AdminDashboard.tsx
 import { useEffect, useState } from "react";
 import AdminLayout from "./AdminLayout";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import PaymentDetailsModal from "./modals/AdminDashboard/PaymentDetailsModal";
+import ViewVoucherModal from "../../components/shared/ViewVoucherModal";
+import RejectPaymentModal from "./modals/AdminDashboard/RejectPaymentModal";
+import RejectLaundryModal from "./modals/LaundryManagement/RejectLaundryModal";
+import RescheduleLaundryModal from "./modals/LaundryManagement/RescheduleLaundryModal";
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  CircularProgress,
-  Alert,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-} from "@mui/material";
-import { Info } from "@mui/icons-material";
-import { IconButton, Tooltip } from "@mui/material";
+  Container, Grid, Card, CardContent, Typography, Tabs, Tab, Table, TableHead, TableRow,
+  TableCell, TableBody, TableContainer, Paper, IconButton, Chip, CircularProgress, Alert,
+  Tooltip, Snackbar} from "@mui/material";
+import { Info, Visibility, Check, Close } from "@mui/icons-material";
+import {DashboardData, SnackbarState, Payment} from "../../types/types"
 
 const AdminDashboard = () => {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [openModal, setOpenModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tab, setTab] = useState("pays_reject");
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [openVoucher, setOpenVoucher] = useState(false);
+  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [openRejectLaundryModal, setOpenRejectLaundryModal] = useState(false);
+  const [openRescheduleLaundryModal, setOpenRescheduleLaundryModal] = useState(false);
+  const [snackbar, setSnackbar] = useState<SnackbarState>({ 
+    open: false, 
+    message: '', 
+    severity: 'success' 
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await api.get(endpoints.dashboard.admin);
         setData(response.data);
-      } catch (error) {
-        setError("Error al cargar los datos.");
+      } catch (err) {
+        setSnackbar({ open: true, message: "Error al cargar los datos", severity: "error" });
       } finally {
         setLoading(false);
       }
@@ -43,134 +44,217 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <AdminLayout>
-        <Container maxWidth="lg" sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
-          <CircularProgress />
-        </Container>
-      </AdminLayout>
-    );
-  }
+  const handleApprove = async (id: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.post(`/payments/rent/${id}/approve/`);
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rents_pendings: {
+            ...prev.rents_pendings,
+            pays_pending_review: prev.rents_pendings.pays_pending_review.filter(p => p.id !== id),
+          },
+          washing_pendings: prev.washing_pendings ?? { pending_user: [], pending_admin: [] }
+        };
+      });
+      setSnackbar({ open: true, message: "Pago aprobado exitosamente", severity: "success" });
+    } catch (error) {
+      setSnackbar({ open: true, message: "Error al aprobar pago", severity: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleReject = async (comment: string) => {
+    if (!selectedPayment || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.post(`/payments/rent/${selectedPayment.id}/reject/`, { admin_comment: comment });
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rents_pendings: {
+            ...prev.rents_pendings,
+            pays_pending_review: prev.rents_pendings.pays_pending_review.filter(p => p.id !== selectedPayment.id),
+            pays_reject: [...prev.rents_pendings.pays_reject, selectedPayment],
+          },
+          washing_pendings: prev.washing_pendings ?? { pending_user: [], pending_admin: [] }
+        };
+      });
+      setSnackbar({ open: true, message: "Pago rechazado", severity: "info" });
+      setOpenRejectModal(false);
+    } catch {
+      setSnackbar({ open: true, message: "Error al rechazar pago", severity: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
 
-  if (error) {
-    return (
-      <AdminLayout>
-        <Container maxWidth="lg">
-          <Alert severity="error">{error}</Alert>
-        </Container>
-      </AdminLayout>
-    );
-  }
+  const handleApproveLaundry = async (id: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.post(`/laundry-bookings/${id}/approve/`);
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          rents_pendings: prev.rents_pendings ?? { pays_reject: [], pays_overdue: [], pays_pending_review: [] },
+          washing_pendings: {
+            ...prev.washing_pendings,
+            pending_admin: prev.washing_pendings.pending_admin.filter(p => p.id !== id)
+          }
+        };
+      });
+      setSnackbar({ open: true, message: "Lavado aprobado", severity: "success" });
+    } catch {
+      setSnackbar({ open: true, message: "Error al aprobar lavado", severity: "error" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
 
-  // Agrupar pagos por usuario
-  const userPaymentsSummary = data?.unverified_payments.reduce((acc, payment) => {
-    const userId = payment.user.id;
-    if (!acc[userId]) {
-      acc[userId] = {
-        user: payment.user,
-        pending: 0,
-        inReview: 0,
-        payments: [],
+  const handleLaundryUpdated = () => {
+    setData(prev => {
+      if (!prev || !selectedPayment) return prev;
+      return {
+        ...prev,
+        rents_pendings: prev.rents_pendings ?? { pays_reject: [], pays_overdue: [], pays_pending_review: [] },
+        washing_pendings: {
+          ...prev.washing_pendings,
+          pending_admin: prev.washing_pendings.pending_admin.filter(p => p.id !== selectedPayment.id)
+        }
       };
-    }
-    if (payment.status === "pending") {
-      acc[userId].pending += 1;
-    } else {
-      acc[userId].inReview += 1;
-    }
-    acc[userId].payments.push(payment);
-    return acc;
-  }, {});
+    });
+    setOpenRejectLaundryModal(false);
+    setOpenRescheduleLaundryModal(false);
+  };
+  
 
-  const usersWithPayments = Object.values(userPaymentsSummary || {});
+  if (loading) return <AdminLayout><Container sx={{ textAlign: "center", mt: 8 }}><CircularProgress /></Container></AdminLayout>;
+  if (!data) return <AdminLayout><Container><Alert severity="error">No se pudo cargar el dashboard.</Alert></Container></AdminLayout>;
+
+  const tabDataMap = {
+    pays_reject: { label: "Pagos Rechazados", data: data.rents_pendings.pays_reject, isRent: true },
+    pays_overdue: { label: "Pagos Vencidos", data: data.rents_pendings.pays_overdue, isRent: true },
+    pays_pending_review: { label: "Pagos en Revisión", data: data.rents_pendings.pays_pending_review, isRent: true },
+    pending_user: { label: "Lavandería Usuario", data: data.washing_pendings.pending_user, isRent: false },
+    pending_admin: { label: "Lavandería Admin", data: data.washing_pendings.pending_admin, isRent: false },
+  };
+
+  const renderRows = (items, isRent) => items.map(item => (
+    <TableRow key={item.id}>
+      <TableCell>{item.user.name}</TableCell>
+      <TableCell>{isRent ? `${item.contract?.building} - ${item.contract?.room_number}` : item.date}</TableCell>
+      <TableCell>{isRent ? item.month_paid : item.time_slot}</TableCell>
+      <TableCell><Chip label={item.status} /></TableCell>
+      <TableCell>
+        {(item.voucher_path) && (
+          <Tooltip title="Ver comprobante de pago">
+            <IconButton onClick={() => { setSelectedPayment(item); setOpenVoucher(true); }}>
+              <Visibility />
+            </IconButton>
+          </Tooltip>
+        )}
+  
+        {tab === "pays_pending_review" && (
+          <>
+            <Tooltip title="Aprobar pago">
+              <IconButton color="success" onClick={() => handleApprove(item.id)}>
+                <Check />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Rechazar pago">
+              <IconButton color="error" onClick={() => {
+                setSelectedPayment(item);
+                setOpenRejectModal(true);
+              }}>
+                <Close />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+  
+        {tab === "pending_admin" && (
+          <>
+            <Tooltip title="Aprobar solicitud de lavado">
+              <IconButton color="success" onClick={() => handleApproveLaundry(item.id)}>
+                <Check />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Rechazar solicitud de lavado">
+              <IconButton color="error" onClick={() => {
+                setSelectedPayment(item);
+                setOpenRejectLaundryModal(true);
+              }}>
+                <Close />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Proponer nueva fecha y horario">
+              <IconButton color="warning" onClick={() => {
+                setSelectedPayment(item);
+                setOpenRescheduleLaundryModal(true);
+              }}>
+                <Info />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+      </TableCell>
+    </TableRow>
+  ));
+  
 
   return (
     <AdminLayout>
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        {/* Widgets en la misma fila */}
         <Grid container spacing={3}>
-          {/* Pagos Pendientes */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ backgroundColor: "#ffccbc", height: "100%" }}>
-              <CardContent>
-                <Typography variant="h6" align="center">Pagos Pendientes</Typography>
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={6}>
-                    <Typography variant="body1" align="center"><strong>Total Pagos</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.summary.unverified_payments_count ?? 0}</Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography variant="body1" align="center"><strong>Usuarios</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.summary.unpaid_users_count ?? 0}</Typography>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* Solicitudes de Lavandería */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ backgroundColor: "#d1c4e9", height: "100%" }}>
-              <CardContent>
-                <Typography variant="h6" align="center">Solicitudes de Lavandería</Typography>
-                <Grid container spacing={2} sx={{ mt: 1 }}>
-                  <Grid item xs={4}>
-                    <Typography variant="body1" align="center"><strong>Total</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.washing_payments.qtyAll ?? 0}</Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body1" align="center"><strong>Pend. Usuario</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.washing_payments.qtyPendingByUser ?? 0}</Typography>
-                  </Grid>
-                  <Grid item xs={4}>
-                    <Typography variant="body1" align="center"><strong>Pend. Admin</strong></Typography>
-                    <Typography variant="h5" align="center">{data?.washing_payments.qtyPendingByAdmin ?? 0}</Typography>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </Grid>
+          <Grid item xs={12} md={4}><Card sx={{ bgcolor: "#ffcdd2" }}><CardContent><Typography align="center">Rechazados</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_reject.length}</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={4}><Card sx={{ bgcolor: "#ffe082" }}><CardContent><Typography align="center">En Revisión</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_pending_review.length}</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={4}><Card sx={{ bgcolor: "#ef9a9a" }}><CardContent><Typography align="center">Vencidos</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_overdue.length}</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={6}><Card sx={{ bgcolor: "#ce93d8" }}><CardContent><Typography align="center">Lavandería Usuario</Typography><Typography align="center" variant="h4">{data.washing_pendings.pending_user.length}</Typography></CardContent></Card></Grid>
+          <Grid item xs={12} md={6}><Card sx={{ bgcolor: "#b39ddb" }}><CardContent><Typography align="center">Lavandería Admin</Typography><Typography align="center" variant="h4">{data.washing_pendings.pending_admin.length}</Typography></CardContent></Card></Grid>
         </Grid>
 
-        {/* Tabla de Usuarios con Pagos Pendientes */}
-        <Typography variant="h6" sx={{ mt: 4 }}>Usuarios con Pagos Pendientes</Typography>
-        {usersWithPayments.length > 0 ? (
-          <TableContainer component={Paper} sx={{ mt: 2 }}>
-            <Table>
-              <TableHead sx={{ bgcolor: "#1976d2" }}>
-                <TableRow>
-                  <TableCell sx={{ color: "white" }}>Usuario</TableCell>
-                  <TableCell sx={{ color: "white" }}>Pago En Analisis</TableCell>
-                  <TableCell sx={{ color: "white" }}>Pagos Vencidos</TableCell>
-                  <TableCell sx={{ color: "white" }}>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {usersWithPayments.map((user) => (
-                  <TableRow key={user.user.id}>
-                    <TableCell>{user.user.name}</TableCell>
-                    <TableCell>{user.pending}</TableCell>
-                    <TableCell>{user.inReview}</TableCell>
-                    <TableCell>
-                    <Tooltip title="Ver Detalles">
-                      <IconButton color="primary" onClick={() => { setSelectedUser(user); setOpenModal(true); }}>
-                        <Info />
-                      </IconButton>
-                    </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Typography sx={{ mt: 2 }}>No hay usuarios con pagos pendientes.</Typography>
-        )}
+        <Tabs value={tab} onChange={(_, newTab) => setTab(newTab)} sx={{ mt: 4 }}>
+          {Object.entries(tabDataMap).map(([key, val]) => <Tab key={key} label={val.label} value={key} />)}
+        </Tabs>
 
-        {/* Modal de Detalles de Pagos */}
-        <PaymentDetailsModal open={openModal} onClose={() => setOpenModal(false)} user={selectedUser} />
+        <TableContainer component={Paper} sx={{ mt: 3 }}>
+          <Table>
+            <TableHead sx={{ bgcolor: "#1976d2" }}>
+              <TableRow>
+                <TableCell sx={{ color: "white" }}>Usuario</TableCell>
+                <TableCell sx={{ color: "white" }}>{tabDataMap[tab].isRent ? "Habitación" : "Fecha"}</TableCell>
+                <TableCell sx={{ color: "white" }}>{tabDataMap[tab].isRent ? "Mes Pagado" : "Horario"}</TableCell>
+                <TableCell sx={{ color: "white" }}>Estado</TableCell>
+                <TableCell sx={{ color: "white" }}>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>{renderRows(tabDataMap[tab].data, tabDataMap[tab].isRent)}</TableBody>
+          </Table>
+        </TableContainer>
 
+        <ViewVoucherModal 
+        open={openVoucher} 
+        onClose={() => setOpenVoucher(false)} 
+        voucherImage={selectedPayment?.voucher_path || ""} />
+
+        <RejectPaymentModal 
+        open={openRejectModal} onClose={() => setOpenRejectModal(false)} 
+        payment={selectedPayment} onRejected={(reason) => handleReject(reason)} />
+        <RejectLaundryModal open={openRejectLaundryModal} onClose={() => setOpenRejectLaundryModal(false)} request={selectedPayment} onReject={handleLaundryUpdated} />
+        <RescheduleLaundryModal open={openRescheduleLaundryModal} onClose={() => setOpenRescheduleLaundryModal(false)} request={selectedPayment} onReschedule={handleLaundryUpdated} />
+
+        <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+          <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>{snackbar.message}</Alert>
+        </Snackbar>
       </Container>
     </AdminLayout>
   );

@@ -1,15 +1,8 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
 import { ImageUtil } from "../utils/ImageUtil"; // ✅ Importa la utilidad
 
-const ViewVoucherModal = ({
-  open,
-  onClose,
-  voucherImage,
-}: {
-  open: boolean;
-  onClose: () => void;
-  voucherImage: string;
-}) => {
+const ViewVoucherModal = ({open,onClose,voucherImage,}: 
+  {open: boolean;onClose: () => void; voucherImage: string;}) => {
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle sx={{ fontWeight: "bold", color: "#1976d2" }}>

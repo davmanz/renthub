@@ -37,6 +37,7 @@ class Command(BaseCommand):
             "Cédula de Ciudadanía",
             "Pasaporte",
             "Cédula Extranjería",
+            "Permiso Temporal (PPT)"
         ]
 
         for doc_type in document_types:

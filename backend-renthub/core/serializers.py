@@ -12,11 +12,21 @@ from core.models import (CustomUser, UserChangeRequest,
 from dateutil.relativedelta import relativedelta
 from core.models import Contract, RentPaymentHistory, Room, Building, ReferencePerson, DocumentType
 
+########################################################################################################
+####                                                                                                ####
+####               Serializador para la persona de referencia (ReferencePerson)                     ####
+####                                                                                                ####
+########################################################################################################
 class ReferencePersonSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReferencePerson
         fields = "__all__"
 
+########################################################################################################
+####                                                                                                ####
+####                    Serializador para el usuario (CustomUser)                                   ####
+####                                                                                                ####
+########################################################################################################
 class CustomUserSerializer(serializers.ModelSerializer):
 
     # Campos de solo lectura
@@ -26,6 +36,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(read_only=True)
 
     # GET: Devolverá objetos completos
+    profile_photo = serializers.SerializerMethodField()
     document_type = serializers.SerializerMethodField()
     reference_1 = serializers.SerializerMethodField()
     reference_2 = serializers.SerializerMethodField()
@@ -55,6 +66,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "is_verified"
         ]
 
+    def get_profile_photo(self, obj):
+        return obj.profile_photo.url if obj.profile_photo else None
+    
     def create(self, validated_data):
         """Asegura que la contraseña se almacene hasheada"""
         password = validated_data.pop("password", None)
@@ -123,13 +137,18 @@ class CustomUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este correo ya está registrado.")
         return value
 
-
+########################################################################################################
+####                                                                                                ####
+####                    Serializador para el contrato de alquiler (Contract)                        ####
+####                                                                                                ####
+########################################################################################################
 class ContractSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     room_number = serializers.CharField(source="room.room_number", read_only=True)
     building_name = serializers.CharField(source="room.building.name", read_only=True)
     is_overdue = serializers.SerializerMethodField()
     next_month = serializers.SerializerMethodField()
+    contract_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = Contract
@@ -139,6 +158,9 @@ class ContractSerializer(serializers.ModelSerializer):
             "includes_wifi", "wifi_cost", "is_overdue", "next_month",
             "contract_photo"
         ]
+
+    def get_contract_photo(self, obj):
+        return obj.contract_photo.url if obj.contract_photo else None
 
     def get_user_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}"
@@ -170,7 +192,7 @@ class ContractSerializer(serializers.ModelSerializer):
             "admin_comment": next_payment.admin_comment
         }
 
-
+    '''
     def create(self, validated_data):
         """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
         with transaction.atomic():  # 🔹 Bloquea la consulta para evitar condiciones de carrera
@@ -184,17 +206,20 @@ class ContractSerializer(serializers.ModelSerializer):
 
             contract = Contract.objects.create(**validated_data)
 
-            start_date = contract.start_date
-            end_date = contract.end_date
-            current_date = start_date
+            start_date = contract.start_date.strftime("%Y-%m")
+            # start_date = 01/2024
+            end_date = contract.end_date.strftime("%Y-%m")
+            # end_date = 01/2025
+            current_date = start_date.strftime("%Y-%m")
+            # current_date = 01/2024
 
             while current_date <= end_date:
                 # Convertir la fecha actual a formato YYYY-MM para compararla con el mes actual
                 current_month = datetime.today().strftime("%Y-%m")
                 month_payment = current_date.strftime("%Y-%m")
 
-                # Si el mes de pago ya pasó, el estado debe ser "overdue", de lo contrario "pending"
-                payment_state = "overdue" if month_payment < current_month else "pending_review"
+                # Si el mes de pago ya pasó, el estado debe ser "overdue", de lo contrario "upcoming"
+                payment_state = "overdue" if month_payment <= current_month else "upcoming"      
 
                 # Crear el registro en PaymentHistory con el estado correcto
                 RentPaymentHistory.objects.create(
@@ -207,7 +232,56 @@ class ContractSerializer(serializers.ModelSerializer):
                 current_date += relativedelta(months=1)
 
         return contract
+    '''
+    def create(self, validated_data):
+        """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
+        with transaction.atomic():
+            room = validated_data["room"]
 
+            # Bloquea la habitación durante la transacción
+            room = Room.objects.select_for_update().get(id=room.id)
+
+            # Validación: solo crear contrato si no hay otro activo
+            if Contract.objects.filter(room=room, end_date__gte=validated_data["start_date"]).exists():
+                raise ValidationError(f"La habitación {room.room_number} ya tiene un contrato activo.")
+
+            # Crear el contrato
+            contract = Contract.objects.create(**validated_data)
+
+            # Marcar habitación como ocupada manualmente (create no ejecuta save personalizado)
+            room.is_occupied = True
+            room.save(update_fields=["is_occupied"])
+
+            # Inicializar fechas
+            current_date = contract.start_date
+            end_date = contract.end_date
+
+            today = datetime.today().date()
+
+            while current_date <= end_date:
+                month_payment = current_date.strftime("%Y-%m")
+
+                # Comparar fechas correctamente
+                payment_state = "overdue" if current_date < today else "upcoming"
+
+                # Crear historial de pagos
+                RentPaymentHistory.objects.create(
+                    contract=contract,
+                    month_paid=month_payment,
+                    payment_date=current_date,
+                    status=payment_state
+                )
+
+                # Avanzar al mes siguiente (manteniendo el día original)
+                current_date += relativedelta(months=1)
+
+        return contract
+
+########################################################################################################
+####                                                                                                ####
+####        Serializador para la solicitud de cambio de datos del usuario (UserChangeRequest)       ####
+####                                                                                                ####
+########################################################################################################
 class UserChangeRequestSerializer(serializers.ModelSerializer):
     ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number"]
 
@@ -242,11 +316,17 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
 
         return data
 
-##############################################################################
-
+########################################################################################################
+####                                                                                                ####
+####           Serializador para el historial de pagos de alquiler (RentPaymentHistory)             ####
+####                                                                                                ####
+########################################################################################################
 class RentPaymentSerializer(serializers.ModelSerializer):
     contract = serializers.SerializerMethodField()
+    receipt_image = serializers.SerializerMethodField()
 
+    
+    
     class Meta:
         model = RentPaymentHistory
         fields = [
@@ -258,6 +338,9 @@ class RentPaymentSerializer(serializers.ModelSerializer):
             "status": {"read_only": True},
             "admin_comment": {"read_only": True}
         }
+
+    def get_receipt_image(self, obj):
+        return obj.receipt_image.url if obj.receipt_image else None
 
     def create(self, validated_data):
         validated_data["payment_date"] = datetime.today().date()
@@ -271,8 +354,11 @@ class RentPaymentSerializer(serializers.ModelSerializer):
             "room": obj.contract.room.room_number
         }
 
-##############################################################################
-
+########################################################################################################
+####                                                                                                ####
+####                            Serializador para la habitación (Room)                              ####
+####                                                                                                ####
+########################################################################################################
 class RoomSerializer(serializers.ModelSerializer):
     building_name = serializers.CharField(source="building.name", read_only=True)
 
@@ -280,17 +366,26 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = ["id", "room_number", "is_occupied", "building", "building_name"]
 
-
+########################################################################################################
+####                                                                                                ####
+####                          Serializador para el edificio (Building)                              ####
+####                                                                                                ####
+########################################################################################################
 class BuildingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Building
         fields = "__all__"
 
-
-##############################################################################
+########################################################################################################
+####                                                                                                ####
+####           Serializador para la reserva de lavandería (LaundryBooking)                          ####
+####                                                                                                ####
+########################################################################################################
 class LaundryBookingSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     pending_action = serializers.SerializerMethodField()
+    voucher_image = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
 
     class Meta:
         model = LaundryBooking
@@ -303,7 +398,8 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {"user": {"required": False}}
 
-    payment_status = serializers.SerializerMethodField()
+    def get_voucher_image(self, obj):
+        return obj.voucher_image.url if obj.voucher_image else None
 
     def get_payment_status(self, obj):
         if hasattr(obj, "payment"):
@@ -329,7 +425,11 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
             return "user" if obj.last_action_by == "admin" else "admin"
         return None  # No hay acción pendiente (ya está aprobada o rechazada)
 
-##############################################################################
+########################################################################################################
+####                                                                                                ####
+####                    Serializador para el tipo de documento (DocumentType)                       ####
+####                                                                                                ####
+########################################################################################################
 class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentType
