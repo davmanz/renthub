@@ -73,7 +73,7 @@ const ReferenceModal = ({
   return (
     <>
       <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-        <DialogTitle>Seleccionar Referencia</DialogTitle>
+        <DialogTitle>Seleccionar Referencia 001</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
