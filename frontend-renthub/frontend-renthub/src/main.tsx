@@ -2,12 +2,23 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import AppRoutes from "./routes/Router";
 import { AuthProvider } from "./context/AuthContext";
+import { ToastContainer } from "react-toastify"; // ✅ Importa ToastContainer
+import "react-toastify/dist/ReactToastify.css"; // ✅ Importa estilos
+
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
       <AppRoutes />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        closeOnClick
+        pauseOnHover
+        theme="colored"
+      />
     </AuthProvider>
   </React.StrictMode>
 );

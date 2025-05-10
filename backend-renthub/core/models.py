@@ -275,7 +275,7 @@ class RentPaymentHistory(models.Model):
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     building = models.ForeignKey("core.Building", on_delete=models.CASCADE, related_name="rooms")
-    room_number = models.CharField(max_length=50)
+    room_number = models.PositiveSmallIntegerField()
     is_occupied = models.BooleanField(default=False)
 
     def __str__(self):
