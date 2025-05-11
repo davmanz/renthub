@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, FormControl, InputLabel, Select, MenuItem, Alert
+  TextField, Button, FormControl, InputLabel, Select, MenuItem, Alert, CircularProgress
 } from "@mui/material";
+import { toast } from "react-toastify";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
 import SelectUserModal from "./SelectUserModal";
 import SelectRoomModal from "./SelectRoomModal";
 import { validateContractForm } from "../../../../components/utils/ContractValidation";
-
 
 interface ContractFormData {
   user: string;
@@ -49,8 +49,12 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    if (!open) return;
+
     if (contractToEdit) {
       setFormData(contractToEdit);
+      setSelectedUser(null);
+      setSelectedRoom(null);
     } else {
       setFormData({
         user: "",
@@ -62,8 +66,13 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
         includes_wifi: "false",
         wifi_cost: "",
       });
+      setSelectedUser(null);
+      setSelectedRoom(null);
     }
-  }, [contractToEdit, open]);
+
+    setErrors({});
+    setErrorMessage("");
+  }, [open, contractToEdit]);
 
   const handleUserSelect = (user: any) => {
     setFormData(prev => ({ ...prev, user: user.id }));
@@ -97,9 +106,12 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
     try {
       if (contractToEdit) {
         await api.put(endpoints.contractManagement.contracts, formData);
+        toast.success("Contrato actualizado con éxito");
       } else {
         await api.post(endpoints.contractManagement.contracts, formData);
+        toast.success("Contrato creado con éxito");
       }
+
       onContractSaved();
       onClose();
     } catch (err) {
@@ -222,7 +234,7 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>Cancelar</Button>
         <Button onClick={handleSubmit} variant="contained" color="primary" disabled={loading}>
-          {loading ? "Guardando..." : contractToEdit ? "Actualizar" : "Crear"}
+          {loading ? <CircularProgress size={24} color="inherit" /> : contractToEdit ? "Actualizar" : "Crear"}
         </Button>
       </DialogActions>
 

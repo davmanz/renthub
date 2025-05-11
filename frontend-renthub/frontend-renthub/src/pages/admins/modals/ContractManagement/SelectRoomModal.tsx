@@ -2,8 +2,20 @@ import { useState, useEffect } from "react";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, List, ListItem, Button, MenuItem, Select, InputLabel, FormControl
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  List,
+  ListItem,
+  Button,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 
 interface Building {
@@ -27,19 +39,35 @@ const SelectRoomModal = ({ open, onClose, onSelect }: Props) => {
   const [selectedBuilding, setSelectedBuilding] = useState("");
   const [rooms, setRooms] = useState<Room[]>([]);
   const [search, setSearch] = useState("");
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get(endpoints.siteManagement.building)
-      .then(response => setBuildings(response.data))
-      .catch(console.error);
+    api
+      .get(endpoints.siteManagement.building)
+      .then((response) => setBuildings(response.data))
+      .catch((err) => {
+        console.error("Error al cargar edificios:", err);
+        setError("Error al cargar los edificios.");
+      });
   }, []);
 
   useEffect(() => {
     if (selectedBuilding) {
+
       setRooms([]);
-      api.get(endpoints.contractManagement.roomsAvailable(selectedBuilding))
-        .then(response => setRooms(response.data))
-        .catch(console.error);
+      setLoadingRooms(true);
+      api
+        .get(endpoints.contractManagement.roomsAvailable(selectedBuilding))
+        .then((response) => {
+          setRooms(response.data);
+          setError("");
+        })
+        .catch((err) => {
+          console.error("Error al cargar habitaciones:", err);
+          setError("No se pudieron cargar las habitaciones disponibles.");
+        })
+        .finally(() => setLoadingRooms(false));
     }
   }, [selectedBuilding]);
 
@@ -47,13 +75,16 @@ const SelectRoomModal = ({ open, onClose, onSelect }: Props) => {
     <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle>Seleccionar Habitación</DialogTitle>
       <DialogContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
         <FormControl fullWidth margin="dense">
           <InputLabel>Edificio</InputLabel>
           <Select
             value={selectedBuilding}
             onChange={(e) => setSelectedBuilding(e.target.value)}
+            label="Edificio"
           >
-            {buildings.map(building => (
+            {buildings.map((building) => (
               <MenuItem key={building.id} value={building.id}>
                 {building.name}
               </MenuItem>
@@ -70,15 +101,31 @@ const SelectRoomModal = ({ open, onClose, onSelect }: Props) => {
               onChange={(e) => setSearch(e.target.value)}
               margin="dense"
             />
-            <List>
+
+            {loadingRooms ? (
+              <CircularProgress sx={{ mt: 2 }} />
+            ) : (
+              <List>
               {rooms
-                .filter(room => room.room_number.includes(search))
-                .map(room => (
-                  <ListItem key={room.id} button onClick={() => onSelect(room)}>
+                .filter((room) =>
+                  room.room_number !== undefined &&
+                  String(room.room_number).includes(search)
+                )
+                .map((room) => (
+                  <ListItem
+                    key={room.id}
+                    button
+                    onClick={() => onSelect(room)}
+                  >
                     Habitación {room.room_number}
                   </ListItem>
                 ))}
+
+              {rooms.length === 0 && (
+                <ListItem>Sin habitaciones disponibles.</ListItem>
+              )}
             </List>
+            )}
           </>
         )}
       </DialogContent>

@@ -696,8 +696,16 @@ class AdminDashboardView(APIView):
                 "date": booking.date.strftime("%Y-%m-%d"),
                 "time_slot": booking.time_slot,
                 "status": booking.status,
-                "voucher_path": booking.voucher_image.url,
+                "voucher_path": booking.voucher_image.url if booking.voucher_image else None,
                 "admin_comment": booking.admin_comment,
+                "proposed_date": booking.proposed_date.strftime("%Y-%m-%d") if booking.proposed_date else None,
+                "proposed_time_slot": booking.proposed_time_slot,
+                "counter_proposal_date": booking.counter_proposal_date.strftime("%Y-%m-%d") if booking.counter_proposal_date else None,
+                "counter_proposal_time_slot": booking.counter_proposal_time_slot,
+                "last_action_by": booking.last_action_by,
+                "user_response": booking.user_response,
+                "created_at": booking.created_at.strftime("%Y-%m-%d %H:%M"),
+                "updated_at": booking.updated_at.strftime("%Y-%m-%d %H:%M")
             }
             for booking in LaundryBooking.objects.filter(
                 last_action_by=last_actor,

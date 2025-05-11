@@ -1,30 +1,38 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from "@mui/material";
-import { ImageUtil } from "../utils/ImageUtil"; // ✅ nuevo import
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography,
+} from "@mui/material";
+import { ImageUtil } from "../utils/ImageUtil";
 
-interface RejectReasonModalProps {
+const RejectReasonModal = ({
+  open,
+  onClose,
+  adminComment,
+  voucherImage,
+}: {
   open: boolean;
-  handleClose: () => void;
-  booking: {
-    admin_comment?: string;
-    voucher_image?: string;
-  };
-}
-
-const RejectReasonModal = ({ open, booking, handleClose }: RejectReasonModalProps) => {
+  onClose: () => void;
+  adminComment: string;
+  voucherImage?: string;
+}) => {
   return (
-    <Dialog open={open} onClose={handleClose} fullWidth>
-      <DialogTitle sx={{ fontWeight: "bold", color: "#d32f2f" }}>
+    <Dialog open={open} onClose={onClose} fullWidth>
+      <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", color: "#d32f2f" }}>
         Motivo del Rechazo
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent>
         <Typography sx={{ mb: 2 }}>
-          {booking?.admin_comment || "No se proporcionó un motivo."}
+          {adminComment || "No se proporcionó un motivo."}
         </Typography>
 
-        {booking?.voucher_image && (
+        {voucherImage && (
           <img
-            src={ImageUtil.buildUrl(booking.voucher_image)}
+            src={ImageUtil.buildUrl(voucherImage)}
             alt="Comprobante rechazado"
             style={{
               width: "100%",
@@ -36,8 +44,8 @@ const RejectReasonModal = ({ open, booking, handleClose }: RejectReasonModalProp
         )}
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handleClose} variant="outlined" color="error">
+      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+        <Button onClick={onClose} variant="outlined" color="primary">
           Cerrar
         </Button>
       </DialogActions>

@@ -27,6 +27,23 @@ export interface Props {
 }
 
 
+//Laundry User
+export interface LaundryBooking {
+  id: string;
+  date: string;
+  user_full_name: string;
+  time_slot: string;
+  status: 'approved' | 'rejected' | 'counter_proposal' | 'proposed';
+  pending_action: 'user' | 'admin';
+  counter_proposal_date?: string;
+  counter_proposal_time_slot?: string;
+  proposed_date?: string;
+  proposed_time_slot?: string;
+  admin_comment?: string;
+  voucher_image_url?: string;
+}
+
+///////////////////////////////////////////
 
 export interface User {
   id: number;
@@ -39,7 +56,7 @@ export interface Contract {
 }
 
 export interface Payment {
-  id: number;
+  id: string;
   user: User;
   contract?: Contract;
   month_paid?: string;
@@ -48,7 +65,12 @@ export interface Payment {
   voucher_path?: string;
   date?: string;
   time_slot?: string;
+  counter_proposal_date?: string;
+  counter_proposal_time_slot?: string;
+  proposed_date?: string;
+  proposed_time_slot?: string;
 }
+
 
 export interface DashboardData {
   rents_pendings: {

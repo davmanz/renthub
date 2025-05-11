@@ -10,8 +10,8 @@ import {
   Alert,
   CircularProgress,
 } from "@mui/material";
-import api from "../../../../api/api";
-import endpoints from "../../../../api/endpoints";
+import api from "../../api/api";
+import endpoints from "../../api/endpoints";
 
 interface RescheduleModalProps {
   open: boolean;
@@ -71,7 +71,7 @@ const RescheduleModal = ({
       setLoading(true);
       setError("");
       await api.post(
-        endpoints.laundryManagement.counterProposal(booking.id),
+        endpoints.laundryManagement.counterProposal(String(booking.id)),
         {
           counter_proposal_date: rescheduleDate,
           counter_proposal_time_slot: rescheduleTimeSlot,
@@ -109,9 +109,12 @@ const RescheduleModal = ({
               ? "La fecha debe ser igual o posterior a hoy"
               : ""
           }
-          InputProps={{
-            inputProps: { min: new Date().toISOString().split("T")[0] },
-          }}
+          slotProps={
+            {
+              inputLabel: { shrink: true },
+              input: { placeholder: "aaaa-mm-dd" },
+            }
+          }
         />
 
         <TextField

@@ -384,46 +384,44 @@ class BuildingSerializer(serializers.ModelSerializer):
 class LaundryBookingSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     pending_action = serializers.SerializerMethodField()
-    voucher_image = serializers.SerializerMethodField()
+    voucher_image = serializers.ImageField(required=True)  # ✅ ahora es editable
+    voucher_image_url = serializers.SerializerMethodField()  # ✅ campo solo lectura
     payment_status = serializers.SerializerMethodField()
 
     class Meta:
         model = LaundryBooking
         fields = [
-            "id", "user", "user_full_name", "date", "time_slot", 
-            "voucher_image", "status", "admin_comment",
+            "id", "user", "user_full_name", "date", "time_slot",
+            "voucher_image", "voucher_image_url",  # incluir ambos
+            "status", "admin_comment",
             "proposed_date", "proposed_time_slot",
             "counter_proposal_date", "counter_proposal_time_slot",
-            "last_action_by", "pending_action","payment_status"
+            "last_action_by", "pending_action", "payment_status"
         ]
         extra_kwargs = {"user": {"required": False}}
 
-    def get_voucher_image(self, obj):
+    def get_voucher_image_url(self, obj):
         return obj.voucher_image.url if obj.voucher_image else None
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.is_tenant():
+            validated_data["user"] = request.user
+        return super().create(validated_data)
+
+    def get_user_full_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}"
+
+    def get_pending_action(self, obj):
+        if obj.status in ["pending", "counter_proposal", "proposed"]:
+            return "user" if obj.last_action_by == "admin" else "admin"
+        return None
 
     def get_payment_status(self, obj):
         if hasattr(obj, "payment"):
             return obj.payment.status
         return None
 
-    def create(self, validated_data):
-        """Si el usuario autenticado es un Tenant, se asigna automáticamente"""
-        request = self.context.get("request")  # Obtiene el request de la vista
-
-        if request and request.user.is_authenticated and request.user.is_tenant():
-            validated_data["user"] = request.user  # Asigna el usuario autenticado
-        
-        return super().create(validated_data)
-
-    def get_user_full_name(self, obj):
-        """Devuelve el nombre completo del usuario"""
-        return f"{obj.user.first_name} {obj.user.last_name}"
-    
-    def get_pending_action(self, obj):
-        """Determina quién debe responder según `last_action_by`"""
-        if obj.status in ["pending", "counter_proposal", "proposed"]:
-            return "user" if obj.last_action_by == "admin" else "admin"
-        return None  # No hay acción pendiente (ya está aprobada o rechazada)
 
 ########################################################################################################
 ####                                                                                                ####

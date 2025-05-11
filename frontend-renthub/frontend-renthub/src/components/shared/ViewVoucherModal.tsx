@@ -3,6 +3,7 @@ import { ImageUtil } from "../utils/ImageUtil"; // ✅ Importa la utilidad
 
 const ViewVoucherModal = ({open,onClose,voucherImage,}: 
   {open: boolean;onClose: () => void; voucherImage: string;}) => {
+    console.log(voucherImage); // ✅ Verifica la ruta de la imagen
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle sx={{ fontWeight: "bold", color: "#1976d2" }}>
