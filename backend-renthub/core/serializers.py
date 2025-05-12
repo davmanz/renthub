@@ -187,52 +187,11 @@ class ContractSerializer(serializers.ModelSerializer):
         return {
             "id": next_payment.id,
             "payment": next_payment.month_paid,
-            "voucher": next_payment.receipt_image.name if next_payment.receipt_image else None,
+            "voucher": next_payment.receipt_image.url if next_payment.receipt_image else None,
             "status": next_payment.status,
             "admin_comment": next_payment.admin_comment
         }
 
-    '''
-    def create(self, validated_data):
-        """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
-        with transaction.atomic():  # 🔹 Bloquea la consulta para evitar condiciones de carrera
-            room = validated_data["room"]
-
-            # Bloquea la habitación durante la transacción
-            room = Room.objects.select_for_update().get(id=room.id)
-
-            if Contract.objects.filter(room=room, end_date__gte=validated_data["start_date"]).exists():
-                raise ValidationError(f"La habitación {room.room_number} ya tiene un contrato activo.")
-
-            contract = Contract.objects.create(**validated_data)
-
-            start_date = contract.start_date.strftime("%Y-%m")
-            # start_date = 01/2024
-            end_date = contract.end_date.strftime("%Y-%m")
-            # end_date = 01/2025
-            current_date = start_date.strftime("%Y-%m")
-            # current_date = 01/2024
-
-            while current_date <= end_date:
-                # Convertir la fecha actual a formato YYYY-MM para compararla con el mes actual
-                current_month = datetime.today().strftime("%Y-%m")
-                month_payment = current_date.strftime("%Y-%m")
-
-                # Si el mes de pago ya pasó, el estado debe ser "overdue", de lo contrario "upcoming"
-                payment_state = "overdue" if month_payment <= current_month else "upcoming"      
-
-                # Crear el registro en PaymentHistory con el estado correcto
-                RentPaymentHistory.objects.create(
-                    contract=contract,
-                    month_paid=month_payment,
-                    payment_date=current_date,
-                    status=payment_state
-                )
-
-                current_date += relativedelta(months=1)
-
-        return contract
-    '''
     def create(self, validated_data):
         """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
         with transaction.atomic():
@@ -323,14 +282,13 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
 ########################################################################################################
 class RentPaymentSerializer(serializers.ModelSerializer):
     contract = serializers.SerializerMethodField()
-    receipt_image = serializers.SerializerMethodField()
-
-    
+    receipt_image = serializers.ImageField(required=True)
+    receipt_image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = RentPaymentHistory
         fields = [
-            "id", "contract", "month_paid", "receipt_image",
+            "id", "contract", "month_paid", "receipt_image", "receipt_image_url",
             "payment_date", "status", "admin_comment"
         ]
         extra_kwargs = {
@@ -339,7 +297,7 @@ class RentPaymentSerializer(serializers.ModelSerializer):
             "admin_comment": {"read_only": True}
         }
 
-    def get_receipt_image(self, obj):
+    def get_receipt_image_url(self, obj):
         return obj.receipt_image.url if obj.receipt_image else None
 
     def create(self, validated_data):

@@ -79,7 +79,7 @@ const Sidebar = ({ onSelect }: { onSelect: (section: string) => void }) => {
       <List>
         <ListItem  button onClick={() => onSelect("inicio")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
           <ListItemIcon sx={{ color: "#90caf9" }}><Home /></ListItemIcon>
-          <ListItemText primary="Inicio" />
+          <ListItemText primary="Perfil" />
         </ListItem>
 
         <ListItem button onClick={() => onSelect("contrato")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>

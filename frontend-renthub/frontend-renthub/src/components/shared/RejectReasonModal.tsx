@@ -5,23 +5,47 @@ import {
   DialogActions,
   Button,
   Typography,
+  CircularProgress,
 } from "@mui/material";
+import { useState } from "react";
 import { ImageUtil } from "../utils/ImageUtil";
+
+const styles = {
+  dialogTitle: {
+    textAlign: "center" as const,
+    fontWeight: "bold",
+    color: "#d32f2f"
+  },
+  image: {
+    width: "100%",
+    maxHeight: 400,
+    objectFit: "contain" as const,
+    borderRadius: 8,
+  },
+  actions: {
+    justifyContent: "center",
+    pb: 2
+  }
+};
+
+interface RejectReasonModalProps {
+  open: boolean;
+  onClose: () => void;
+  adminComment: string;
+  voucherImage?: string;
+}
 
 const RejectReasonModal = ({
   open,
   onClose,
   adminComment,
   voucherImage,
-}: {
-  open: boolean;
-  onClose: () => void;
-  adminComment: string;
-  voucherImage?: string;
-}) => {
+}: RejectReasonModalProps) => {
+  const [isLoading, setIsLoading] = useState(true);
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
-      <DialogTitle sx={{ textAlign: "center", fontWeight: "bold", color: "#d32f2f" }}>
+      <DialogTitle sx={styles.dialogTitle}>
         Motivo del Rechazo
       </DialogTitle>
 
@@ -31,20 +55,20 @@ const RejectReasonModal = ({
         </Typography>
 
         {voucherImage && (
-          <img
-            src={ImageUtil.buildUrl(voucherImage)}
-            alt="Comprobante rechazado"
-            style={{
-              width: "100%",
-              maxHeight: 400,
-              objectFit: "contain",
-              borderRadius: 8,
-            }}
-          />
+          <>
+            {isLoading && <CircularProgress />}
+            <img
+              src={ImageUtil.buildUrl(voucherImage)}
+              alt="Comprobante rechazado"
+              style={styles.image}
+              onLoad={() => setIsLoading(false)}
+              onError={() => setIsLoading(false)}
+            />
+          </>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+      <DialogActions sx={styles.actions}>
         <Button onClick={onClose} variant="outlined" color="primary">
           Cerrar
         </Button>

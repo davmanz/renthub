@@ -1,30 +1,90 @@
 import { useEffect, useState } from "react";
 import {
-  Avatar,
-  Typography,
-  Paper,
-  CircularProgress,
-  Alert,
-  Box,
-  Divider,
-  Chip,
+  Avatar, Box, Card, CardContent, Grid, Typography, Chip, Divider,
+  Skeleton, Tooltip, Button,
 } from "@mui/material";
+import {
+  AccountCircle,
+  Payment,
+  Folder,
+  Verified,
+  Error as ErrorIcon,
+  CloudUpload as CloudUploadIcon,
+} from "@mui/icons-material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import { ImageUtil } from "../../components/utils/ImageUtil"; // ✅ Importar utilidad
+
+export interface User {
+  first_name: string;
+  last_name: string;
+  email: string;
+  profile_photo?: string;
+  is_verified: boolean;
+  phone_number?: string;
+  document_type?: { name: string };
+  document_number?: string;
+  date_joined?: string;
+  status_user?: "overdue" | "pending_review" | "ok";
+}
+
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "—";
+  return new Date(dateString).toLocaleDateString("es-ES", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+const LoadingSkeleton = () => (
+  <Grid container spacing={3}>
+    <Grid item xs={12} md={4}>
+      <Skeleton variant="rectangular" height={300} />
+    </Grid>
+    <Grid item xs={12} md={8}>
+      <Skeleton variant="rectangular" height={300} />
+    </Grid>
+  </Grid>
+);
+
+const ErrorMessage = ({ message }: { message: string }) => (
+  <Box display="flex" flexDirection="column" alignItems="center" p={3}>
+    <ErrorIcon color="error" sx={{ fontSize: 60, mb: 2 }} />
+    <Typography variant="h6" color="error" gutterBottom>
+      Error al cargar el perfil
+    </Typography>
+    <Typography color="textSecondary">{message}</Typography>
+  </Box>
+);
+
+const AttachedDocuments = () => (
+  <Box textAlign="center" py={2}>
+    <Typography variant="body2" color="textSecondary" gutterBottom>
+      Próximamente podrás gestionar tus documentos aquí
+    </Typography>
+    <Button
+      startIcon={<CloudUploadIcon />}
+      variant="outlined"
+      disabled
+      sx={{ mt: 1 }}
+    >
+      Subir documentos
+    </Button>
+  </Box>
+);
 
 const ProfileSummary = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await api.get(endpoints.auth.me);
-        setUser(response.data);
-      } catch (error) {
-        setError("Error al cargar los datos del usuario.");
+        const res = await api.get(endpoints.auth.me);
+        setUser(res.data);
+      } catch {
+        setError("No se pudo cargar la información del perfil.");
       } finally {
         setLoading(false);
       }
@@ -33,89 +93,155 @@ const ProfileSummary = () => {
     fetchUser();
   }, []);
 
-  if (loading) return <CircularProgress />;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  const getStatusChip = () => {
+    const statusInfo: Record<string, string> = {
+      overdue: "Tienes pagos pendientes que requieren tu atención inmediata",
+      pending_review: "Tus documentos están siendo revisados por nuestro equipo",
+      ok: "Todos tus pagos están al día",
+    };
+
+    const color =
+      user?.status_user === "overdue"
+        ? "error"
+        : user?.status_user === "pending_review"
+        ? "warning"
+        : "success";
+
+    const label =
+      user?.status_user === "overdue"
+        ? "Pago Vencido"
+        : user?.status_user === "pending_review"
+        ? "En Revisión"
+        : "Pagos al Día";
+
+    return (
+      <Tooltip title={statusInfo[user?.status_user || ""] || "Estado no definido"}>
+        <Chip label={label} color={color as any} variant="outlined" sx={{ px: 2 }} />
+      </Tooltip>
+    );
+  };
+
+  if (loading) return <LoadingSkeleton />;
+  if (error) return <ErrorMessage message={error} />;
 
   return (
-    <Paper sx={{ padding: 3, bgcolor: "#2c2c2c", color: "white" }}>
-      {/* Avatar y datos principales */}
-      <Box sx={{ textAlign: "center" }}>
-        <Avatar
-          src={ImageUtil.buildUrl(user?.profile_photo)}
-          alt="Foto de perfil"
-          sx={{
-            width: 100,
-            height: 100,
-            margin: "auto",
-            bgcolor: "#1976d2",
-          }}
-        />
-        <Typography variant="h5" sx={{ mt: 2 }}>
-          {`${user?.first_name} ${user?.last_name}`}
-        </Typography>
-        <Typography variant="body1">{user?.email}</Typography>
-        <Typography
-          variant="body2"
-          sx={{ mt: 1, color: user?.is_active ? "lightgreen" : "red" }}
-        >
-          {user?.is_active ? "Cuenta Activa" : "Cuenta Inactiva"}
-        </Typography>
-      </Box>
+    <Grid container spacing={3}>
+      {/* Perfil */}
+      <Grid item xs={12} md={4}>
+        <Card elevation={3}>
+          <CardContent sx={{ textAlign: "center", py: 3 }}>
+            <Avatar
+              src={user?.profile_photo || ""}
+              sx={{
+                width: 120,
+                height: 120,
+                margin: "0 auto 16px",
+                bgcolor: "primary.main",
+              }}
+            >
+              {!user?.profile_photo && <AccountCircle sx={{ fontSize: 80 }} />}
+            </Avatar>
+            <Typography variant="h5" gutterBottom>
+              {user?.first_name} {user?.last_name}
+            </Typography>
+            <Typography color="textSecondary" gutterBottom>
+              {user?.email}
+            </Typography>
 
-      <Divider sx={{ my: 3, bgcolor: "gray" }} />
+            {user?.is_verified ? (
+              <Chip
+                icon={<Verified />}
+                label="Verificado"
+                color="primary"
+                size="small"
+                sx={{ mt: 1 }}
+              />
+            ) : (
+              <Chip
+                label="No verificado"
+                color="default"
+                size="small"
+                sx={{ mt: 1 }}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
 
-      {/* Información Personal */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h6">Información Personal</Typography>
-        <Typography>
-          <strong>Teléfono:</strong> {user?.phone_number || "No registrado"}
-        </Typography>
-        <Typography>
-          <strong>Tipo de Documento:</strong> {user?.document_type?.name || "No disponible"}
-        </Typography>
-        <Typography>
-          <strong>Número de Documento:</strong> {user?.document_number}
-        </Typography>
-        <Typography>
-          <strong>Fecha de Registro:</strong> {new Date(user?.date_joined).toLocaleDateString()}
-        </Typography>
-      </Box>
+      {/* Información personal */}
+      <Grid item xs={12} md={8}>
+        <Card elevation={3}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Información Personal
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Teléfono
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {user?.phone_number || "—"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Tipo de Documento
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {user?.document_type?.name || "—"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Número de Documento
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {user?.document_number || "—"}
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="subtitle2" color="textSecondary">
+                  Fecha de Registro
+                </Typography>
+                <Typography variant="body1" gutterBottom>
+                  {formatDate(user?.date_joined)}
+                </Typography>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
+      </Grid>
 
-      <Divider sx={{ my: 3, bgcolor: "gray" }} />
+      {/* Estado de pagos */}
+      <Grid item xs={12} md={6}>
+        <Card elevation={3}>
+          <CardContent>
+            <Box display="flex" alignItems="center" mb={2}>
+              <Payment sx={{ mr: 1, color: "primary.main" }} />
+              <Typography variant="h6">Estado de Pagos</Typography>
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            {getStatusChip()}
+          </CardContent>
+        </Card>
+      </Grid>
 
-      {/* Estado de Pagos */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h6">Estado de Pagos</Typography>
-        {user?.has_pending_payments ? (
-          <Chip label="Pagos Pendientes" color="error" />
-        ) : (
-          <Chip label="Pagos al Día" color="success" />
-        )}
-      </Box>
-
-      <Divider sx={{ my: 3, bgcolor: "gray" }} />
-
-      {/* Fotos Adjuntas */}
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="h6">Documentos Adjuntos</Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
-          {user?.id_photo && (
-            <img
-              src={ImageUtil.buildUrl(user.id_photo)}
-              alt="Foto de Identificación"
-              width="150px"
-            />
-          )}
-          {user?.contract_photo && (
-            <img
-              src={ImageUtil.buildUrl(user.contract_photo)}
-              alt="Foto del Contrato"
-              width="150px"
-            />
-          )}
-        </Box>
-      </Box>
-    </Paper>
+      {/* Documentos adjuntos */}
+      <Grid item xs={12} md={6}>
+        <Card elevation={3}>
+          <CardContent>
+            <Box display="flex" alignItems="center" mb={2}>
+              <Folder sx={{ mr: 1, color: "primary.main" }} />
+              <Typography variant="h6">Documentos Adjuntos</Typography>
+            </Box>
+            <Divider sx={{ mb: 2 }} />
+            <AttachedDocuments />
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
   );
 };
 

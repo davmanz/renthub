@@ -53,6 +53,25 @@ export interface User {
 export interface Contract {
   building: string;
   room_number: string;
+  building_name: string;
+  is_overdue: boolean;
+  start_date: string;
+  end_date: string;
+  rent_amount: number;
+  deposit_amount: number;
+  includes_wifi: boolean;
+  wifi_cost: number;
+  user: User;
+  id: string;
+  status: string;
+  next_month?: {
+    status: string;
+    id: string;
+    payment: string;
+    voucher: string;
+    admin_comment: string;
+  };
+  contract_photo_url: string;
 }
 
 export interface Payment {

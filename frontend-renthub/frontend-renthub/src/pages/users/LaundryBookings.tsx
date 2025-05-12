@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Typography, Paper, CircularProgress, Alert, Button, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip,
+  TableContainer, TableHead, TableRow, Chip, IconButton, Tooltip, Box
 } from "@mui/material";
 import { Close, Schedule, Visibility, Check, Info, Add } from "@mui/icons-material";
 import api from "../../api/api";
@@ -22,7 +22,6 @@ const LaundryBookings = () => {
   const [openVoucherModal, setOpenVoucherModal] = useState(false);
   const [openReserveModal, setOpenReserveModal] = useState(false);
 
-  // En el archivo del ReserveModal
   const fetchLaundryBookings = async () => {
     setLoading(true);
     setError("");
@@ -44,7 +43,7 @@ const LaundryBookings = () => {
     try {
       await api.post(endpoints.laundryManagement.acceptProposal(bookingId));
       fetchLaundryBookings();
-    } catch (err) {
+    } catch {
       setError("Error al aceptar la propuesta.");
     }
   };
@@ -63,7 +62,12 @@ const LaundryBookings = () => {
         Crear Reserva
       </Button>
 
-      {loading && <CircularProgress />}
+      {loading && (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+          <CircularProgress />
+        </Box>
+      )}
+
       {error && <Alert severity="error">{error}</Alert>}
 
       {!loading && !error && laundryBookings.length > 0 ? (

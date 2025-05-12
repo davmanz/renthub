@@ -11,25 +11,28 @@ import {
   TableCell,
   IconButton,
   Chip,
+  Tooltip,
 } from "@mui/material";
-import { Visibility } from "@mui/icons-material";
+import { Visibility, Block } from "@mui/icons-material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import { DateUtil } from "../../components/utils/DateUtil"; // ✅ Nuevo import
-import ViewVoucherModal from "../../components/shared/ViewVoucherModal"; // ✅ Usando modal compartido
+import { DateUtil } from "../../components/utils/DateUtil";
+import ViewVoucherModal from "../../components/shared/ViewVoucherModal";
 
 const statusLabels: Record<string, string> = {
   approved: "Aprobado",
   pending_review: "Pendiente",
   rejected: "Rechazado",
-  overdue: "Vencido", // ✅ Nuevo estado
+  overdue: "Vencido",
+  upcoming: "Futuro",
 };
 
-const statusColors: Record<string, "success" | "warning" | "error"> = {
+const statusColors: Record<string, "success" | "warning" | "error" | "info"> = {
   approved: "success",
   pending_review: "warning",
   rejected: "error",
-  overdue: "error", // ✅ Rojo para vencido
+  overdue: "error",
+  upcoming: "info",
 };
 
 const PaymentHistory = () => {
@@ -104,13 +107,25 @@ const PaymentHistory = () => {
                   />
                 </TableCell>
                 <TableCell sx={{ color: "white" }}>
-                  {payment.receipt_image ? (
-                    <IconButton
-                      onClick={() => handleViewVoucher(payment.receipt_image)}
-                      color="primary"
-                    >
-                      <Visibility />
-                    </IconButton>
+                  {payment.receipt_image_url ? (
+                    payment.status === "approved" || payment.status === "pending_review" ? (
+                      <Tooltip title="Ver comprobante">
+                        <IconButton
+                          onClick={() => handleViewVoucher(payment.receipt_image_url)}
+                          color="primary"
+                        >
+                          <Visibility />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Comprobante no disponible en este estado">
+                        <span>
+                          <IconButton disabled>
+                            <Block sx={{ color: "#888" }} />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )
                   ) : (
                     "-"
                   )}
@@ -121,7 +136,6 @@ const PaymentHistory = () => {
         </Table>
       )}
 
-      {/* ✅ Modal reutilizable para ver comprobante */}
       <ViewVoucherModal
         open={!!voucherUrl}
         onClose={handleCloseVoucher}
