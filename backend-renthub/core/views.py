@@ -847,7 +847,8 @@ class VerifyAccountView(APIView):
         token = str(token).strip()
         if not self.validate_token(token):
             return Response(
-                {"detail": "Formato de token inválido o caracteres no permitidos"}, 
+                {"detail": "Formato de token inválido o caracteres no permitidos",
+                 "status": "error"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -857,7 +858,8 @@ class VerifyAccountView(APIView):
         
         if attempt_count >= 3:  # Máximo 3 intentos por token
             return Response(
-                {"detail": "Demasiados intentos. Por favor, solicita un nuevo token."}, 
+                {"detail": "Demasiados intentos. Por favor, solicita un nuevo token.",
+                 "status": "error"}, 
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
 
@@ -868,7 +870,8 @@ class VerifyAccountView(APIView):
             # Verificar si el token ya fue usado
             if user.is_verified:
                 return Response(
-                    {"detail": "Esta cuenta ya fue verificada anteriormente"}, 
+                    {"detail": "Esta cuenta ya fue verificada anteriormente",
+                     "status": "error"}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -882,7 +885,8 @@ class VerifyAccountView(APIView):
             cache.delete(cache_key)
 
             return Response(
-                {"detail": "Cuenta verificada correctamente"}, 
+                {"detail": "Cuenta verificada correctamente",
+                 "status": "success"}, 
                 status=status.HTTP_200_OK
             )
 
@@ -891,6 +895,7 @@ class VerifyAccountView(APIView):
             cache.set(cache_key, attempt_count + 1, 900)  # 15 minutos de timeout
             
             return Response(
-                {"detail": "Token inválido o expirado"}, 
+                {"detail": "Token inválido o expirado",
+                 "status": "error"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )

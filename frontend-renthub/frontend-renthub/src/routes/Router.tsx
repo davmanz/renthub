@@ -9,6 +9,7 @@ import ContractManagement from "../pages/admins/ContractManagement.tsx";
 import SitesManagement from "../pages/admins/SitesManagement.tsx";
 import LaundryManagement from "../pages/admins/LaundryManagement.tsx"
 import UserPaymentHistory from "../pages/admins/UserPaymentHistory";
+import VerifyAccountPage from "../pages/VerifyAccountPage";
 import NotFound from "../pages/NotFound";
 
 const ProtectedRoute = ({ element }: { element: ReactElement }) => {
@@ -29,6 +30,7 @@ const AppRoutes = () => {
         <Route path="/dashboard/admin/sites" element={<ProtectedRoute element={<SitesManagement />} />} />
         <Route path="/dashboard/admin/laundry" element={<ProtectedRoute element={<LaundryManagement />} />} />
         <Route path="/dashboard/admin/payment-history" element={<UserPaymentHistory />} />
+        <Route path="/verify-account/:token" element={<VerifyAccountPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
