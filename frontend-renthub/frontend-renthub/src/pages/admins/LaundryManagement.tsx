@@ -116,6 +116,7 @@ const LaundryManagement = () => {
         open={openVoucherModal}
         onClose={() => setOpenVoucherModal(false)}
         voucherImage={selectedRequest?.voucher_image_url || ""}
+        userComment={selectedRequest?.user_comment || undefined}
       />
 
       <RejectionModal

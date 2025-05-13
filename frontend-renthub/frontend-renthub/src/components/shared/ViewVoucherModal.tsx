@@ -1,9 +1,17 @@
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import { ImageUtil } from "../utils/ImageUtil"; // ✅ Importa la utilidad
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box } from "@mui/material";
+import { ImageUtil } from "../utils/ImageUtil";
 
-const ViewVoucherModal = ({open,onClose,voucherImage,}: 
-  {open: boolean;onClose: () => void; voucherImage: string;}) => {
-    console.log(voucherImage); // ✅ Verifica la ruta de la imagen
+const ViewVoucherModal = ({
+  open,
+  onClose,
+  voucherImage,
+  userComment,
+}: {
+  open: boolean;
+  onClose: () => void;
+  voucherImage: string;
+  userComment?: string;
+}) => {
   return (
     <Dialog open={open} onClose={onClose} fullWidth>
       <DialogTitle sx={{ fontWeight: "bold", color: "#1976d2" }}>
@@ -13,7 +21,7 @@ const ViewVoucherModal = ({open,onClose,voucherImage,}:
       <DialogContent>
         {voucherImage ? (
           <img
-            src={ImageUtil.buildUrl(voucherImage)} // ✅ Usa la ruta absoluta
+            src={ImageUtil.buildUrl(voucherImage)}
             alt="Comprobante de pago"
             style={{
               width: "100%",
@@ -23,7 +31,18 @@ const ViewVoucherModal = ({open,onClose,voucherImage,}:
             }}
           />
         ) : (
-          <p>No hay comprobante disponible.</p>
+          <Typography>No hay comprobante disponible.</Typography>
+        )}
+
+        {userComment && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Comentario del usuario:
+            </Typography>
+            <Typography variant="body1" sx={{ whiteSpace: "pre-wrap" }}>
+              {userComment}
+            </Typography>
+          </Box>
         )}
       </DialogContent>
 

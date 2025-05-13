@@ -23,6 +23,8 @@ const LaundryModal = ({ open, handleClose, onSuccess }: LaundryModalProps) => {
   const [success, setSuccess] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [userComment, setUserComment] = useState("");
+
 
   useEffect(() => {
     if (!open) {
@@ -66,7 +68,7 @@ const LaundryModal = ({ open, handleClose, onSuccess }: LaundryModalProps) => {
     formData.append("date", date);
     formData.append("time_slot", timeSlot);
     formData.append("voucher_image", voucher!);
-
+    formData.append("user_comment", userComment);
 
     try {
       const response = await api.post(endpoints.laundryManagement.create, formData, {
@@ -166,6 +168,16 @@ const LaundryModal = ({ open, handleClose, onSuccess }: LaundryModalProps) => {
               />
             </Button>
           </Tooltip>
+
+          <TextField
+            label="Comentario sobre el pago (opcional)"
+            fullWidth
+            multiline
+            rows={3}
+            value={userComment}
+            onChange={(e) => setUserComment(e.target.value)}
+            sx={{ mt: 2 }}
+          />
 
           {voucher && (
             <Alert severity="info" sx={{ mt: 1 }}>

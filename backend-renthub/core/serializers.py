@@ -284,12 +284,14 @@ class RentPaymentSerializer(serializers.ModelSerializer):
     contract = serializers.SerializerMethodField()
     receipt_image = serializers.ImageField(required=True)
     receipt_image_url = serializers.SerializerMethodField()
+    user_comment = serializers.CharField(allow_blank=True, required=False)
+
     
     class Meta:
         model = RentPaymentHistory
         fields = [
             "id", "contract", "month_paid", "receipt_image", "receipt_image_url",
-            "payment_date", "status", "admin_comment"
+            "payment_date", "status", "admin_comment", "user_comment"
         ]
         extra_kwargs = {
             "payment_date": {"read_only": True},
@@ -342,16 +344,18 @@ class BuildingSerializer(serializers.ModelSerializer):
 class LaundryBookingSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     pending_action = serializers.SerializerMethodField()
-    voucher_image = serializers.ImageField(required=True)  # ✅ ahora es editable
-    voucher_image_url = serializers.SerializerMethodField()  # ✅ campo solo lectura
+    voucher_image = serializers.ImageField(required=True) 
+    voucher_image_url = serializers.SerializerMethodField()  
     payment_status = serializers.SerializerMethodField()
+    user_comment = serializers.CharField(allow_blank=True, required=False)
+    admin_comment = serializers.CharField(allow_blank=True, required=False)
 
     class Meta:
         model = LaundryBooking
         fields = [
             "id", "user", "user_full_name", "date", "time_slot",
-            "voucher_image", "voucher_image_url",  # incluir ambos
-            "status", "admin_comment",
+            "voucher_image", "voucher_image_url",
+            "status", "admin_comment", "user_comment",
             "proposed_date", "proposed_time_slot",
             "counter_proposal_date", "counter_proposal_time_slot",
             "last_action_by", "pending_action", "payment_status"
@@ -379,7 +383,6 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
         if hasattr(obj, "payment"):
             return obj.payment.status
         return None
-
 
 ########################################################################################################
 ####                                                                                                ####

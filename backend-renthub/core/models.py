@@ -62,7 +62,6 @@ def rent_receipt_upload_path(instance, filename):
 def laundry_voucher_upload_path(instance, filename):
     return UploadPaths.laundry_voucher(instance, filename)
 
-
 ########################################################################################################
 ####                                                                                                ####
 ####                 Gestor de usuarios personalizados para la autenticación                        ####
@@ -249,6 +248,7 @@ class RentPaymentHistory(models.Model):
     month_paid = models.CharField(max_length=20)
     payment_date = models.DateField(auto_now_add=True)
     admin_comment = models.TextField(blank=True, null=True)
+    user_comment = models.TextField(blank=True, null=True)
     receipt_image = models.ImageField(
         upload_to=rent_receipt_upload_path,
         validators=[validate_image_file],
@@ -344,6 +344,7 @@ class LaundryBooking(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     admin = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_laundry_bookings")
     admin_comment = models.TextField(blank=True, null=True)
+    user_comment = models.TextField(blank=True, null=True)
 
     voucher_image = models.ImageField(
         upload_to=laundry_voucher_upload_path,

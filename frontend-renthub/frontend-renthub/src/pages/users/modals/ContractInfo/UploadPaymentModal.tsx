@@ -1,15 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  CircularProgress,
-  Alert,
-  Stack,
-  Typography,
-  Box,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  CircularProgress, Alert, Stack, Typography, Box, TextField
 } from "@mui/material";
 import { CloudUpload, Cancel } from "@mui/icons-material";
 import api from "../../../../api/api";
@@ -34,6 +26,7 @@ const UploadPaymentModal = ({
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [userComment, setUserComment] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -74,6 +67,7 @@ const UploadPaymentModal = ({
 
     const formData = new FormData();
     formData.append("receipt_image", file!);
+    formData.append("user_comment", userComment);
 
     try {
       const response = await api.patch(endpoints.payments.detailRent(paymentId), formData, {
@@ -129,6 +123,16 @@ const UploadPaymentModal = ({
                 onChange={handleFileChange}
               />
             </Button>
+
+            <TextField
+              label="Comentario sobre el pago (opcional)"
+              fullWidth
+              multiline
+              rows={3}
+              value={userComment}
+              onChange={(e) => setUserComment(e.target.value)}
+              sx={{ mt: 2 }}
+            />
 
             {file && (
               <Alert severity="info">

@@ -16,6 +16,7 @@ interface Payment {
   payment_date: string;
   status: "approved" | "pending_review" | "overdue" | "upcoming";
   receipt_image_url: string | null;
+  user_comment: string | null;
 }
 
 interface Props {
@@ -28,7 +29,7 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [voucherToShow, setVoucherToShow] = useState<string | null>(null);
-
+  const [userComment, setUserComment] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<Payment["status"] | "all">("all");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Payment; direction: 'asc' | 'desc' } | null>(null);
   const [page, setPage] = useState(0);
@@ -152,7 +153,10 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
                           {p.receipt_image_url ? (
                             <Tooltip title="Ver comprobante">
                               <IconButton 
-                                onClick={() => setVoucherToShow(p.receipt_image_url!)}
+                                onClick={() => {
+                                  setVoucherToShow(p.receipt_image_url);
+                                  setUserComment(p.user_comment);
+                                }}
                                 sx={{ '&:hover': { backgroundColor: 'action.selected' } }}
                               >
                                 <Visibility />
@@ -191,6 +195,7 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
           open={Boolean(voucherToShow)}
           onClose={() => setVoucherToShow(null)}
           voucherImage={voucherToShow}
+          userComment={userComment || undefined}
         />
       )}
     </>

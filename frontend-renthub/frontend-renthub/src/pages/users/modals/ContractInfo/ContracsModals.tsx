@@ -36,6 +36,7 @@ const ContractModals = ({ contract, modalStates, setModalStates }: Props) => {
           open={modalStates.viewVoucher}
           onClose={() => setModalStates({ ...modalStates, viewVoucher: false })}
           voucherImage={nextMonth.voucher}
+          userComment={nextMonth.user_comment}
         />
       )}
 

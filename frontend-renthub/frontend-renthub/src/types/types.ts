@@ -41,6 +41,7 @@ export interface LaundryBooking {
   proposed_time_slot?: string;
   admin_comment?: string;
   voucher_image_url?: string;
+  user_comment?: string;
 }
 
 ///////////////////////////////////////////
@@ -88,6 +89,7 @@ export interface Payment {
   counter_proposal_time_slot?: string;
   proposed_date?: string;
   proposed_time_slot?: string;
+  user_comment?: string;
 }
 
 

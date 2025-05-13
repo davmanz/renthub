@@ -699,7 +699,8 @@ class AdminDashboardView(APIView):
                 "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
                 "status": payment.status,
                 "voucher_path": payment.receipt_image.url if payment.receipt_image else None,
-                "admin_comment": payment.admin_comment
+                "admin_comment": payment.admin_comment,
+                "user_comment": payment.user_comment,
             }
             for payment in RentPaymentHistory.objects.filter(status=status)
             .select_related("contract__user", "contract__room__building")
@@ -746,7 +747,6 @@ class AdminDashboardView(APIView):
                 "pending_admin": self.get_laundry_pending_by("user"),
             }
         })
-
 
 ########################################################################################################
 ####                                                                                                ####

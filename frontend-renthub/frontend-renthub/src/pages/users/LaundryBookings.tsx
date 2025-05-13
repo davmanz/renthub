@@ -212,6 +212,7 @@ const LaundryBookings = () => {
         open={openVoucherModal}
         onClose={() => setOpenVoucherModal(false)}
         voucherImage={selectedBooking?.voucher_image_url || ""}
+        userComment={selectedBooking?.user_comment}
       />
 
       <RescheduleModal

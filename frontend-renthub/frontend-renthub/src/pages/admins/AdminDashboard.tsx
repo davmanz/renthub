@@ -307,7 +307,11 @@ const AdminDashboard = () => {
           </Table>
         </TableContainer>
 
-        <ViewVoucherModal open={openVoucher} onClose={() => setOpenVoucher(false)} voucherImage={selectedPayment?.voucher_path || ""} />
+        <ViewVoucherModal 
+          open={openVoucher} onClose={() => setOpenVoucher(false)} 
+          voucherImage={selectedPayment?.voucher_path || ""} 
+          userComment={selectedPayment?.user_comment || undefined}
+        />
         
         <RejectionModal
           open={openRejectModal}

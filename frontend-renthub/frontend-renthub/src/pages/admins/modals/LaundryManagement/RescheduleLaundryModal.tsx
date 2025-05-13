@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  Alert,
-  CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField,  MenuItem, Alert, CircularProgress,
 } from "@mui/material";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
@@ -16,7 +9,7 @@ import endpoints from "../../../../api/endpoints";
 interface RescheduleModalProps {
   open: boolean;
   booking: {
-    id: number;
+    id: string;
     counter_proposal_date?: string;
     counter_proposal_time_slot?: string;
   };
@@ -109,8 +102,10 @@ const RescheduleModal = ({
               ? "La fecha debe ser igual o posterior a hoy"
               : ""
           }
-          InputProps={{
-            inputProps: { min: new Date().toISOString().split("T")[0] },
+          slotProps={{
+            input: {
+              min: new Date().toISOString().split("T")[0]
+            }
           }}
         />
 
