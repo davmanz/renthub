@@ -231,18 +231,26 @@ class ContractViewSet(viewsets.ModelViewSet):
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
-        """Restringe la visibilidad de contratos sin modificar la BD."""
+        """Restringe la visibilidad de contratos según el usuario autenticado y opcionalmente filtra por ?user=id"""
         user = self.request.user
         contracts = Contract.objects.all()
 
-        if not user.is_superadmin():
-            contracts = contracts.filter(user=user) if user.is_tenant() else contracts.filter(user__role="tenant")
+        # Filtro opcional por usuario
+        user_id = self.request.query_params.get("user")
+        if user_id:
+            contracts = contracts.filter(user_id=user_id)
 
-        # 🔹 No se modifica el estado de los contratos en la base de datos
+        # Filtro por rol
+        if not user.is_superadmin():
+            if user.is_tenant():
+                contracts = contracts.filter(user=user)
+            elif user.is_admin():
+                contracts = contracts.filter(user__role="tenant")
+
+        # Lógica adicional: marcar contratos con pagos vencidos
         today = datetime.today()
         current_year_month = f"{today.year}-{today.month:02d}"
 
-        # Filtra los contratos que tienen pagos vencidos sin modificar `status`
         for contract in contracts:
             contract.has_overdue = contract.rent_payments.filter(
                 status__in=["overdue", "pending_review", "rejected"],
@@ -250,6 +258,19 @@ class ContractViewSet(viewsets.ModelViewSet):
             ).exists()
 
         return contracts
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
+    def payments(self, request, pk=None):
+        contract = self.get_object()
+
+        rent_payments = RentPaymentHistory.objects.filter(contract=contract).order_by("-month_paid")
+        rent_data = RentPaymentSerializer(rent_payments, many=True, context={"request": request}).data
+
+
+        return Response({
+            "rent_payments": rent_data,
+
+        })
 
 ########################################################################################################
 ####                                                                                                ####

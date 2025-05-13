@@ -107,6 +107,11 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             <ListItemText primary="Gestión de Sitios" />
           </ListItem>
 
+          <ListItem button onClick={() => navigate("/dashboard/admin/payment-history")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}><Assignment /></ListItemIcon>
+            <ListItemText primary="Historial de Pagos" />
+          </ListItem>
+
           <ListItem button onClick={() => navigate("/dashboard/admin/laundry")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><LocalLaundryService /></ListItemIcon>
             <ListItemText primary="Gestión de Lavandería" />

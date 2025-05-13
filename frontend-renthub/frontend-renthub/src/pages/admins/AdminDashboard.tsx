@@ -183,28 +183,98 @@ const AdminDashboard = () => {
       <Container maxWidth="lg" sx={{ mt: 4 }}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
-            <Card sx={{ bgcolor: "#ffcdd2", cursor: "pointer" }} onClick={() => setTab("pays_reject")}>
-              <CardContent><Typography align="center">Rechazados</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_reject.length}</Typography></CardContent>
+            <Card 
+              sx={{ 
+                bgcolor: "#ffcdd2", 
+                cursor: "pointer",
+                opacity: tab === "pays_reject" ? 1 : 0.7,
+                border: tab === "pays_reject" ? '2px solid #d32f2f' : 'none',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => setTab("pays_reject")}
+            >
+              <CardContent>
+                <Typography align="center" fontWeight={tab === "pays_reject" ? "bold" : "normal"}>
+                  Rechazados
+                </Typography>
+                <Typography align="center" variant="h4">{data.rents_pendings.pays_reject.length}</Typography>
+              </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Card sx={{ bgcolor: "#ffe082", cursor: "pointer" }} onClick={() => setTab("pays_pending_review")}>
-              <CardContent><Typography align="center">En Revisión</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_pending_review.length}</Typography></CardContent>
+            <Card 
+              sx={{ 
+                bgcolor: "#ffe082", 
+                cursor: "pointer",
+                opacity: tab === "pays_pending_review" ? 1 : 0.7,
+                border: tab === "pays_pending_review" ? '2px solid #f57f17' : 'none',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => setTab("pays_pending_review")}
+            >
+              <CardContent>
+                <Typography align="center" fontWeight={tab === "pays_pending_review" ? "bold" : "normal"}>
+                  En Revisión
+                </Typography>
+                <Typography align="center" variant="h4">{data.rents_pendings.pays_pending_review.length}</Typography>
+              </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Card sx={{ bgcolor: "#ef9a9a", cursor: "pointer" }} onClick={() => setTab("pays_overdue")}>
-              <CardContent><Typography align="center">Vencidos</Typography><Typography align="center" variant="h4">{data.rents_pendings.pays_overdue.length}</Typography></CardContent>
+            <Card 
+              sx={{ 
+                bgcolor: "#ef9a9a", 
+                cursor: "pointer",
+                opacity: tab === "pays_overdue" ? 1 : 0.7,
+                border: tab === "pays_overdue" ? '2px solid #c62828' : 'none',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => setTab("pays_overdue")}
+            >
+              <CardContent>
+                <Typography align="center" fontWeight={tab === "pays_overdue" ? "bold" : "normal"}>
+                  Vencidos
+                </Typography>
+                <Typography align="center" variant="h4">{data.rents_pendings.pays_overdue.length}</Typography>
+              </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Card sx={{ bgcolor: "#ce93d8", cursor: "pointer" }} onClick={() => setTab("pending_user")}>
-              <CardContent><Typography align="center">Lavandería Usuario</Typography><Typography align="center" variant="h4">{data.washing_pendings.pending_user.length}</Typography></CardContent>
+            <Card 
+              sx={{ 
+                bgcolor: "#ce93d8", 
+                cursor: "pointer",
+                opacity: tab === "pending_user" ? 1 : 0.7,
+                border: tab === "pending_user" ? '2px solid #7b1fa2' : 'none',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => setTab("pending_user")}
+            >
+              <CardContent>
+                <Typography align="center" fontWeight={tab === "pending_user" ? "bold" : "normal"}>
+                  Lavandería Usuario
+                </Typography>
+                <Typography align="center" variant="h4">{data.washing_pendings.pending_user.length}</Typography>
+              </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Card sx={{ bgcolor: "#b39ddb", cursor: "pointer" }} onClick={() => setTab("pending_admin")}>
-              <CardContent><Typography align="center">Lavandería Admin</Typography><Typography align="center" variant="h4">{data.washing_pendings.pending_admin.length}</Typography></CardContent>
+            <Card 
+              sx={{ 
+                bgcolor: "#b39ddb", 
+                cursor: "pointer",
+                opacity: tab === "pending_admin" ? 1 : 0.7,
+                border: tab === "pending_admin" ? '2px solid #4527a0' : 'none',
+                transition: 'all 0.3s ease'
+              }} 
+              onClick={() => setTab("pending_admin")}
+            >
+              <CardContent>
+                <Typography align="center" fontWeight={tab === "pending_admin" ? "bold" : "normal"}>
+                  Lavandería Admin
+                </Typography>
+                <Typography align="center" variant="h4">{data.washing_pendings.pending_admin.length}</Typography>
+              </CardContent>
             </Card>
           </Grid>
         </Grid>

@@ -17,10 +17,13 @@ const endpoints = {
 
   contractManagement: {
     contracts: `${API_BASE}/contracts/`,
+    contractsByUser: (userId: string) => `${API_BASE}/contracts/?user=${userId}`,
+    paymentsByContract: (contractId: string) => `${API_BASE}/contracts/${contractId}/payments/`,
     rommsAvaible: `${API_BASE}/rooms/available/`,
     roomsAvailable: (buildingId?: string) => buildingId
       ? `${API_BASE}/rooms/available/?building_id=${buildingId}`
       : `${API_BASE}/rooms/available/`,
+    
   },
 
   siteManagement: {
