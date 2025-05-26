@@ -1,17 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import AdminLayout from "./AdminLayout";
 import CreateBuildingModal from "./modals/Sites/CreateBuildingModal";
 import CreateRoomModal from "./modals/Sites/CreateRoomModal";
+import EditBuildingModal from "./modals/Sites/EditBuildingModal";
 import {
-  Container, Paper, Typography, Button, IconButton, Chip, Box, 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Alert, Breadcrumbs, Link, Tooltip, CircularProgress,
+  Container, Paper, Typography, Button, IconButton, Chip, Box,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Alert, Breadcrumbs, Link, Tooltip, CircularProgress, Snackbar, TextField,
+  TablePagination, Grid
 } from "@mui/material";
 import { Edit, Add, Lock, LockOpen } from "@mui/icons-material";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
-import InboxIcon from "@mui/icons-material/Inbox";
 
 interface Building {
   id: string;
@@ -30,8 +31,16 @@ const SitesManagement = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [buildingModalOpen, setBuildingModalOpen] = useState(false);
   const [roomModalOpen, setRoomModalOpen] = useState(false);
+  const [editBuildingModal, setEditBuildingModal] = useState<{open: boolean, building: Building | null}>({
+    open: false,
+    building: null
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   useEffect(() => {
     fetchBuildings();
@@ -45,7 +54,6 @@ const SitesManagement = () => {
       setBuildings(response.data);
     } catch (error) {
       setError("Error al obtener los edificios.");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +64,7 @@ const SitesManagement = () => {
       const response = await api.get(endpoints.siteManagement.buildingRooms(buildingId));
       setRooms(response.data);
     } catch (error) {
-      console.error("Error al obtener rooms", error);
+      setSnackbar({ open: true, message: "Error al obtener habitaciones", severity: "error" });
     }
   };
 
@@ -69,6 +77,18 @@ const SitesManagement = () => {
       fetchRooms(building.id);
     }
   };
+
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((r) =>
+      r.room_number.toString().includes(search)
+    );
+  }, [rooms, search]);
+
+  const stats = useMemo(() => ({
+    total: rooms.length,
+    occupied: rooms.filter(r => r.is_occupied).length,
+    available: rooms.filter(r => !r.is_occupied).length
+  }), [rooms]);
 
   return (
     <AdminLayout>
@@ -86,119 +106,89 @@ const SitesManagement = () => {
         {isLoading && <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        {buildings.length === 0 && !isLoading ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <InboxIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-            <Typography color="text.secondary">No hay edificios registrados todavía</Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Add />}
-              onClick={() => setBuildingModalOpen(true)}
-              sx={{ mt: 2 }}
-            >
-              Agregar primer edificio
-            </Button>
-          </Box>
-        ) : (
-          <TableContainer
-            component={Paper}
-            sx={{
-              mb: 3,
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              borderRadius: 2,
-              '& .MuiTable-root': {
-                borderCollapse: 'separate',
-                borderSpacing: '0 8px'
-              }
-            }}
-          >
-            <Table>
-              <TableHead sx={{ bgcolor: "#1976d2" }}>
-                <TableRow>
-                  <TableCell sx={{ color: "white" }}>Edificio</TableCell>
-                  <TableCell sx={{ color: "white" }}>Acciones</TableCell>
+        <TableContainer component={Paper} sx={{ mb: 3 }}>
+          <Table>
+            <TableHead sx={{ bgcolor: "#1976d2" }}>
+              <TableRow>
+                <TableCell sx={{ color: "white" }}>Edificio</TableCell>
+                <TableCell sx={{ color: "white" }}>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {buildings.map((building) => (
+                <TableRow
+                  key={building.id}
+                  onClick={() => handleBuildingClick(building)}
+                  sx={{
+                    cursor: 'pointer',
+                    bgcolor: selectedBuilding?.id === building.id ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                    '&:hover': {
+                      bgcolor: 'rgba(25, 118, 210, 0.04)',
+                    }
+                  }}
+                >
+                  <TableCell>{building.name}</TableCell>
+                  <TableCell>
+                    <Tooltip title="Editar edificio" arrow>
+                      <IconButton 
+                        color="primary" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditBuildingModal({ open: true, building });
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {buildings.map((building) => (
-                  <TableRow
-                    key={building.id}
-                    onClick={() => handleBuildingClick(building)}
-                    sx={{
-                      cursor: 'pointer',
-                      bgcolor: selectedBuilding?.id === building.id ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                      '&:hover': {
-                        bgcolor: 'rgba(25, 118, 210, 0.04)',
-                        transition: 'background-color 0.2s ease'
-                      }
-                    }}
-                  >
-                    <TableCell>{building.name}</TableCell>
-                    <TableCell>
-                      <Tooltip title="Editar edificio" arrow placement="top">
-                        <IconButton color="primary" onClick={() => handleBuildingClick(building)}>
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
         <Button
           variant="contained"
           color="primary"
           startIcon={<Add />}
           onClick={() => setBuildingModalOpen(true)}
-          sx={{ mb: 2 }}
+          sx={{ mb: 3 }}
         >
           Agregar Edificio
         </Button>
 
         {selectedBuilding && (
-          <Box
-            sx={{
-              animation: 'fadeIn 0.3s ease-in-out',
-              '@keyframes fadeIn': {
-                '0%': { opacity: 0, transform: 'translateY(10px)' },
-                '100%': { opacity: 1, transform: 'translateY(0)' }
-              }
-            }}
-          >
+          <Box>
             <Typography variant="h5" sx={{ mt: 3 }}>
               Habitaciones de {selectedBuilding.name}
             </Typography>
 
-            {rooms.length === 0 ? (
-              <Typography variant="body1" sx={{ textAlign: 'center', py: 3 }}>
-                No hay habitaciones registradas para este edificio
-              </Typography>
-            ) : (
-              <TableContainer
-                component={Paper}
-                sx={{
-                  mt: 2,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  borderRadius: 2,
-                  '& .MuiTable-root': {
-                    borderCollapse: 'separate',
-                    borderSpacing: '0 8px'
-                  }
-                }}
-              >
-                <Table>
-                  <TableHead sx={{ bgcolor: "#1976d2" }}>
-                    <TableRow>
-                      <TableCell sx={{ color: "white" }}>Número de Habitación</TableCell>
-                      <TableCell sx={{ color: "white" }}>Estado</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {rooms.map((room) => (
+            <Grid container spacing={2} sx={{ my: 2 }}>
+              <Grid item><Chip label={`Total: ${stats.total}`} /></Grid>
+              <Grid item><Chip label={`Ocupadas: ${stats.occupied}`} color="error" /></Grid>
+              <Grid item><Chip label={`Disponibles: ${stats.available}`} color="success" /></Grid>
+            </Grid>
+
+            <TextField
+              fullWidth
+              placeholder="Buscar habitación..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead sx={{ bgcolor: "#1976d2" }}>
+                  <TableRow>
+                    <TableCell sx={{ color: "white" }}>Número de Habitación</TableCell>
+                    <TableCell sx={{ color: "white" }}>Estado</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredRooms
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((room) => (
                       <TableRow key={room.id}>
                         <TableCell>{room.room_number}</TableCell>
                         <TableCell>
@@ -207,19 +197,27 @@ const SitesManagement = () => {
                             color={room.is_occupied ? "error" : "success"}
                             variant="outlined"
                             icon={room.is_occupied ? <Lock /> : <LockOpen />}
-                            sx={{
-                              '& .MuiChip-label': { fontWeight: 500 },
-                              minWidth: 100,
-                              justifyContent: 'center'
-                            }}
                           />
                         </TableCell>
                       </TableRow>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={filteredRooms.length}
+              page={page}
+              onPageChange={(_, newPage) => setPage(newPage)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25]}
+              sx={{ mt: 2 }}
+            />
 
             <Button
               variant="contained"
@@ -239,12 +237,32 @@ const SitesManagement = () => {
           refreshBuildings={fetchBuildings}
         />
 
-        <CreateRoomModal
-          open={roomModalOpen && selectedBuilding !== null}
-          onClose={() => setRoomModalOpen(false)}
-          building={selectedBuilding!}
-          refreshRooms={() => selectedBuilding && fetchRooms(selectedBuilding.id)}
+        {selectedBuilding && (
+          <CreateRoomModal
+            open={roomModalOpen}
+            onClose={() => setRoomModalOpen(false)}
+            building={selectedBuilding}
+            refreshRooms={() => fetchRooms(selectedBuilding.id)}
+          />
+        )}
+
+        <EditBuildingModal
+          open={editBuildingModal.open}
+          onClose={() => setEditBuildingModal({ open: false, building: null })}
+          building={editBuildingModal.building}
+          refreshBuildings={fetchBuildings}
         />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </AdminLayout>
   );

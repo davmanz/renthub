@@ -31,8 +31,7 @@ const AdminDashboard = () => {
     severity: 'success'
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
+   const fetchData = async () => {
       try {
         const response = await api.get(endpoints.dashboard.admin);
         setData(response.data);
@@ -42,6 +41,8 @@ const AdminDashboard = () => {
         setLoading(false);
       }
     };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -350,10 +351,20 @@ const AdminDashboard = () => {
           title="Rechazo de Reserva"
         />
         
-        <RescheduleLaundryModal open={openRescheduleLaundryModal} onClose={() => setOpenRescheduleLaundryModal(false)} request={selectedPayment} onReschedule={handleLaundryUpdated} />
-        <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
-          <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>{snackbar.message}</Alert>
+        <RescheduleLaundryModal 
+          open={openRescheduleLaundryModal} 
+          handleClose={() => setOpenRescheduleLaundryModal(false)} 
+          booking={selectedPayment}
+          fetchBookings={fetchData}
+        />
+
+        <Snackbar 
+          open={snackbar.open} autoHideDuration={4000} 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}>
+            <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity}>{snackbar.message}</Alert>
         </Snackbar>
+        
       </Container>
     </AdminLayout>
   );

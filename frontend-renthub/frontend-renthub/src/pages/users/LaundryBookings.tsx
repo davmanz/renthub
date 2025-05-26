@@ -10,7 +10,7 @@ import endpoints from "../../api/endpoints";
 import RejectReasonModal from "../../components/shared/RejectReasonModal";
 import RescheduleModal from "../../components/utils/RescheduleModal";
 import ViewVoucherModal from "../../components/shared/ViewVoucherModal";
-import ReserveModal from "./modals/LaundryBookings/ReserveModal";
+import ReserveModal from "./modals/LaundryBookings/deprecado-ReserveModal";
 
 const LaundryBookings = () => {
   const [laundryBookings, setLaundryBookings] = useState<any[]>([]);

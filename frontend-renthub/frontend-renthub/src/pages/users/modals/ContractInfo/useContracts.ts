@@ -28,5 +28,5 @@ export const useContracts = () => {
     fetchContracts();
   }, []);
 
-  return { contracts, loading, error };
+  return { contracts, loading, error, refetchContracts: fetchContracts };
 };

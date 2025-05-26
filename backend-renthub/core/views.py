@@ -572,6 +572,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
         user = self.request.user
         action_user = "user" if user.role == "tenant" else "admin"
+        print(user.role)
 
         """El admin propone una nueva fecha/hora"""
         booking = self.get_object()
@@ -720,6 +721,7 @@ class AdminDashboardView(APIView):
                 "status": booking.status,
                 "voucher_path": booking.voucher_image.url if booking.voucher_image else None,
                 "admin_comment": booking.admin_comment,
+                "user_comment": booking.user_comment,
                 "proposed_date": booking.proposed_date.strftime("%Y-%m-%d") if booking.proposed_date else None,
                 "proposed_time_slot": booking.proposed_time_slot,
                 "counter_proposal_date": booking.counter_proposal_date.strftime("%Y-%m-%d") if booking.counter_proposal_date else None,

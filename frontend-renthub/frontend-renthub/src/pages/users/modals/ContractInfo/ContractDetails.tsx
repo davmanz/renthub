@@ -6,21 +6,6 @@ import {
 import { Contract } from "../../../../types/types";
 import { DateUtil } from "../../../../components/utils/DateUtil";
 
-// 🎨 Paleta de colores centralizada
-const COLORS = {
-  background: "#424242",
-  divider: "gray",
-  icons: {
-    home: "#90caf9",
-    calendar: "#ffb74d",
-    calendarEnd: "#ff7043",
-    money: "#66bb6a",
-    security: "#fdd835",
-    wifi: "#42a5f5",
-  },
-} as const;
-
-// ✅ Tipado específico para los modales
 interface ModalStates {
   uploadPayment: boolean;
   viewVoucher: boolean;
@@ -33,7 +18,6 @@ interface Props {
   setModalStates: (value: Partial<ModalStates>) => void;
 }
 
-// 🧩 Componente separado para mostrar el estado general del contrato
 const ContractStatus = ({ contract }: { contract: Contract }) => (
   <Grid item xs={12} sx={{ textAlign: "center", mt: 1 }}>
     {contract.next_month?.status === "pending_review" ? (
@@ -61,7 +45,6 @@ const ContractStatus = ({ contract }: { contract: Contract }) => (
   </Grid>
 );
 
-// 🧩 Componente principal
 const ContractDetails = ({ contract, modalStates, setModalStates }: Props) => {
   const next = contract.next_month;
 
@@ -70,56 +53,51 @@ const ContractDetails = ({ contract, modalStates, setModalStates }: Props) => {
   };
 
   return (
-    <Card sx={{ bgcolor: COLORS.background, color: "white", borderRadius: 2, p: 2 }}>
+    <Card sx={{ bgcolor: "#424242", color: "white", borderRadius: 2, p: 2 }}>
       <CardContent>
         <Grid container spacing={2}>
-          {/* Título */}
           <Grid item xs={12}>
             <Typography variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Home sx={{ color: COLORS.icons.home }} />
+              <Home sx={{ color: "#90caf9" }} />
               {contract.building_name} - Habitación {contract.room_number}
             </Typography>
           </Grid>
 
-          {/* Estado del contrato */}
           <ContractStatus contract={contract} />
 
-          <Divider sx={{ width: "100%", my: 2, bgcolor: COLORS.divider }} />
+          <Divider sx={{ width: "100%", my: 2, bgcolor: "gray" }} />
 
-          {/* Fechas */}
           <Grid item xs={6}>
             <Typography variant="body1" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <CalendarToday sx={{ color: COLORS.icons.calendar }} />
+              <CalendarToday sx={{ color: "#ffb74d" }} />
               <strong>Inicio:</strong> {contract.start_date}
             </Typography>
           </Grid>
           <Grid item xs={6}>
             <Typography variant="body1" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <CalendarToday sx={{ color: COLORS.icons.calendarEnd }} />
+              <CalendarToday sx={{ color: "#ff7043" }} />
               <strong>Fin:</strong> {contract.end_date}
             </Typography>
           </Grid>
 
-          <Divider sx={{ width: "100%", my: 2, bgcolor: COLORS.divider }} />
+          <Divider sx={{ width: "100%", my: 2, bgcolor: "gray" }} />
 
-          {/* Monto */}
           <Grid item xs={6}>
             <Typography variant="body1" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <AttachMoney sx={{ color: COLORS.icons.money }} />
+              <AttachMoney sx={{ color: "#66bb6a" }} />
               <strong>Renta:</strong> ${contract.rent_amount}
             </Typography>
           </Grid>
           <Grid item xs={6}>
             <Typography variant="body1" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Security sx={{ color: COLORS.icons.security }} />
+              <Security sx={{ color: "#fdd835" }} />
               <strong>Depósito:</strong> ${contract.deposit_amount}
             </Typography>
           </Grid>
 
-          {/* Wifi */}
           <Grid item xs={12}>
             <Typography variant="body1" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Wifi sx={{ color: contract.includes_wifi ? COLORS.icons.wifi : "gray" }} />
+              <Wifi sx={{ color: contract.includes_wifi ? "#42a5f5" : "gray" }} />
               <strong>WiFi:</strong> {contract.includes_wifi ? "Incluido" : "No incluido"}
             </Typography>
             {contract.includes_wifi && (
@@ -127,12 +105,10 @@ const ContractDetails = ({ contract, modalStates, setModalStates }: Props) => {
             )}
           </Grid>
 
-          {/* Estado del mes próximo */}
           {next && (
             <Grid item xs={12} sx={{ textAlign: "center", mt: 3 }}>
               <Typography variant="body1" sx={{ mb: 1 }}>
-                Mes a pagar:{" "}
-                <strong>{DateUtil.getMonthAndYear(next.payment)}</strong>
+                Mes a pagar: <strong>{DateUtil.getMonthAndYear(next.payment)}</strong>
               </Typography>
 
               {next.status === "rejected" && next.voucher && next.admin_comment && (

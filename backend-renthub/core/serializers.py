@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.db import transaction
 from datetime import datetime
-from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from core.models import (CustomUser, UserChangeRequest,
                          Contract, 
                          RentPaymentHistory,
@@ -202,7 +203,7 @@ class ContractSerializer(serializers.ModelSerializer):
 
             # Validación: solo crear contrato si no hay otro activo
             if Contract.objects.filter(room=room, end_date__gte=validated_data["start_date"]).exists():
-                raise ValidationError(f"La habitación {room.room_number} ya tiene un contrato activo.")
+                raise DjangoValidationError(f"La habitación {room.room_number} ya tiene un contrato activo.")
 
             # Crear el contrato
             contract = Contract.objects.create(**validated_data)
@@ -325,6 +326,16 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ["id", "room_number", "is_occupied", "building", "building_name"]
+
+    def validate(self, data):
+        try:
+            # Intentar validar con las reglas del modelo
+            instance = Room(**data)
+            instance.clean()
+        except DjangoValidationError as e:
+            raise DRFValidationError({"error": e.message})
+
+        return data
 
 ########################################################################################################
 ####                                                                                                ####

@@ -1,18 +1,23 @@
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Snackbar,
-  Alert,
-  DialogContentText,
-  CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Button, Snackbar, Alert, DialogContentText,
+  CircularProgress, Tooltip
 } from "@mui/material";
+import { DomainAdd } from "@mui/icons-material";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
+
+// Función de validación centralizada
+const validateRoomNumber = (value: string): string | null => {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "El número de habitación es obligatorio";
+  if (!/^\d+$/.test(trimmed)) return "No debe contener signos o letras";
+  if (trimmed.length > 3) return "Máximo 3 dígitos";
+  if (parseInt(trimmed, 10) <= 0) return "Debe ser mayor a 0";
+  return null;
+};
 
 interface Props {
   open: boolean;
@@ -27,6 +32,7 @@ const CreateRoomModal = ({ open, onClose, building, refreshRooms }: Props) => {
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [showConfirmClose, setShowConfirmClose] = useState(false);
 
+  const errorMessage = validateRoomNumber(roomNumber);
   const isFormDirty = roomNumber.trim() !== "";
 
   const handleClose = () => {
@@ -44,37 +50,34 @@ const CreateRoomModal = ({ open, onClose, building, refreshRooms }: Props) => {
   };
 
   const handleSubmit = async () => {
-    if (!roomNumber.trim()) {
-      setSnackbar({ open: true, message: "El número de habitación es obligatorio", severity: "error" });
+    if (errorMessage) {
+      setSnackbar({ open: true, message: errorMessage, severity: "error" });
       return;
     }
-  
-    if (!/^\d+$/.test(roomNumber.trim())) {
-      setSnackbar({ open: true, message: "El número de habitación debe ser numérico", severity: "error" });
-      return;
-    }
-    if (roomNumber.length > 3) {
-      setSnackbar({ open: true, message: "El número de habitación no puede exceder los 3 dígitos", severity: "error" });
-      return;
-    }
-  
+
     setLoading(true);
     try {
       const response = await api.post(endpoints.siteManagement.rooms, {
-        room_number: roomNumber,
+        room_number: parseInt(roomNumber.trim(), 10),
         building: building.id,
       });
-  
+
       if (response.status === 201) {
         refreshRooms();
         setSnackbar({ open: true, message: "Habitación creada con éxito", severity: "success" });
         setRoomNumber("");
         onClose();
-      } else {
+
+      }else {
         setSnackbar({ open: true, message: "Error inesperado al crear la habitación", severity: "error" });
       }
-    } catch (err) {
-      setSnackbar({ open: true, message: "Error al crear la habitación", severity: "error" });
+    } catch (err: any) {
+      const backendMessage =
+        err?.response?.data?.error ||
+        err?.response?.data?.detail ||
+        "Error al crear la habitación";
+
+      setSnackbar({ open: true, message: backendMessage, severity: "error" });
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,11 @@ const CreateRoomModal = ({ open, onClose, building, refreshRooms }: Props) => {
   return (
     <>
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Agregar Habitación a {building ? building.name : "..."}</DialogTitle>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <DomainAdd fontSize="large" />
+          Agregar Habitación a {building?.name || "..."}
+        </DialogTitle>
+
         <DialogContent>
           <TextField
             fullWidth
@@ -99,13 +106,42 @@ const CreateRoomModal = ({ open, onClose, building, refreshRooms }: Props) => {
             onChange={(e) => setRoomNumber(e.target.value)}
             margin="dense"
             required
+            error={!!errorMessage}
+            helperText={errorMessage}
+            slotProps={{
+              input: {
+                'aria-label': 'Número de habitación',
+                inputProps: {
+                  maxLength: 3
+                }
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !loading && !errorMessage) {
+                handleSubmit();
+              }
+            }}
+            disabled={loading}
           />
+
+          <Tooltip title="Limpiar campo" arrow>
+            <Button
+              onClick={() => setRoomNumber("")}
+              variant="text"
+              size="small"
+              sx={{ mt: 1 }}
+              disabled={loading || !roomNumber}
+            >
+              Limpiar
+            </Button>
+          </Tooltip>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} variant="contained" disabled={loading}>
+          <Button onClick={handleSubmit} variant="contained" disabled={loading || !!errorMessage}>
             {loading ? <CircularProgress size={22} color="inherit" /> : "Guardar"}
           </Button>
         </DialogActions>

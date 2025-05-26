@@ -275,12 +275,33 @@ class RentPaymentHistory(models.Model):
 class Room(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     building = models.ForeignKey("core.Building", on_delete=models.CASCADE, related_name="rooms")
-    room_number = models.PositiveSmallIntegerField()
+    room_number = models.IntegerField()
     is_occupied = models.BooleanField(default=False)
+
+    def clean(self):
+        """Valida las restricciones del modelo Room."""
+        # Verificar que sea mayor a 0
+        if self.room_number <= 0:
+            raise ValidationError("El número de habitación debe ser mayor a 0")
+
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.building.name} - {self.room_number}"
+    
+    class Meta:
+        ordering = ['building', 'room_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['building', 'room_number'],
+                name='unique_room_building',
+                violation_error_message='Ya existe una habitación con el número {room_number} en el edificio {building}'
+            )]
 
+    
 ########################################################################################################
 ####                                                                                                ####
 ####                            Modelo para gestionar los edificios                                 ####

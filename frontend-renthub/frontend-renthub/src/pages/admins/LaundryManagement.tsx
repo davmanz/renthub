@@ -14,7 +14,7 @@ import LaundryRequestsTable from "../../components/utils/LaundryRequestsTable";
 import RescheduleLaundryModal from "./modals/LaundryManagement/RescheduleLaundryModal";
 import {RejectionModal} from "../../components/shared/RejectionModal";
 import ViewVoucherModal from "../../components/shared/ViewVoucherModal";
-import RejectionReasonModal from "./modals/LaundryManagement/RejectionReasonModal";
+import RejectionReasonModal from "./modals/LaundryManagement/deprecado_RejectionReasonModal";
 import { LaundryBooking } from "../../types/types";
 
 const LaundryManagement = () => {

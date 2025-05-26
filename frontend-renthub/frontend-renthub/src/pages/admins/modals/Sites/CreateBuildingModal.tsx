@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Button,
-  Snackbar,
-  Alert,
-  DialogContentText,
-  CircularProgress,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Button, Snackbar, Alert, LinearProgress,
+  DialogContentText, InputAdornment
 } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
 
@@ -26,82 +21,126 @@ const CreateBuildingModal = ({ open, onClose, refreshBuildings }: Props) => {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const [showConfirmClose, setShowConfirmClose] = useState(false);
+  const [errors, setErrors] = useState({ buildingName: "", address: "" });
 
   const isFormDirty = buildingName.trim() !== "" || address.trim() !== "";
+
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
+
+  const validateForm = () => {
+    const newErrors = { buildingName: "", address: "" };
+
+    if (buildingName.trim().length < 3) {
+      newErrors.buildingName = "El nombre debe tener al menos 3 caracteres";
+    }
+
+    if (address.trim().length < 5) {
+      newErrors.address = "La dirección debe ser más específica";
+    }
+
+    setErrors(newErrors);
+    return Object.values(newErrors).every((e) => e === "");
+  };
+
+  const resetForm = () => {
+    setBuildingName("");
+    setAddress("");
+    setErrors({ buildingName: "", address: "" });
+    setShowConfirmClose(false);
+  };
 
   const handleClose = () => {
     if (isFormDirty) {
       setShowConfirmClose(true);
     } else {
+      resetForm();
       onClose();
     }
   };
 
   const confirmClose = () => {
-    setBuildingName("");
-    setAddress("");
-    setShowConfirmClose(false);
+    resetForm();
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!buildingName.trim() || !address.trim()) {
-      setSnackbar({ open: true, message: "Todos los campos son obligatorios", severity: "error" });
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
-
     try {
       const response = await api.post(endpoints.siteManagement.building, {
-        name: buildingName,
-        address: address,
+        name: buildingName.trim(),
+        address: address.trim(),
       });
 
       if (response.status === 201) {
-        refreshBuildings();
         setSnackbar({ open: true, message: "Edificio creado con éxito", severity: "success" });
-        setBuildingName("");
-        setAddress("");
+        refreshBuildings();
+        resetForm();
         onClose();
+      } else if (response.status === 409) {
+        setSnackbar({ open: true, message: "Ya existe un edificio con este nombre", severity: "error" });
       } else {
-        setSnackbar({ open: true, message: "Error inesperado del servidor", severity: "error" });
+        setSnackbar({ open: true, message: "Error inesperado al crear el edificio", severity: "error" });
       }
-    } catch (err) {
-      setSnackbar({ open: true, message: "Error al crear el edificio", severity: "error" });
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Error al crear el edificio";
+      setSnackbar({ open: true, message: errorMessage, severity: "error" });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!open) {
-      setBuildingName("");
-      setAddress("");
-      setShowConfirmClose(false);
-    }
-  }, [open]);
-
   return (
     <>
-      <Dialog open={open} onClose={handleClose} fullWidth>
-        <DialogTitle>Agregar Edificio</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        fullWidth
+        aria-labelledby="building-dialog-title"
+        aria-describedby="building-dialog-description"
+      >
+        {loading && <LinearProgress />}
+        <DialogTitle id="building-dialog-title">Agregar Edificio</DialogTitle>
+        <DialogContent dividers>
           <TextField
-            fullWidth
             label="Nombre del Edificio"
             value={buildingName}
             onChange={(e) => setBuildingName(e.target.value)}
+            fullWidth
             margin="dense"
             required
+            error={!!errors.buildingName}
+            helperText={errors.buildingName}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <HomeIcon />
+                </InputAdornment>
+              ),
+            }}
           />
+
           <TextField
-            fullWidth
             label="Dirección"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            fullWidth
             margin="dense"
             required
+            error={!!errors.address}
+            helperText={errors.address}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LocationOnIcon />
+                </InputAdornment>
+              ),
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -109,7 +148,7 @@ const CreateBuildingModal = ({ open, onClose, refreshBuildings }: Props) => {
             Cancelar
           </Button>
           <Button onClick={handleSubmit} variant="contained" disabled={loading}>
-            {loading ? <CircularProgress size={22} color="inherit" /> : "Guardar"}
+            Guardar
           </Button>
         </DialogActions>
       </Dialog>
@@ -118,8 +157,8 @@ const CreateBuildingModal = ({ open, onClose, refreshBuildings }: Props) => {
       <Dialog open={showConfirmClose} onClose={() => setShowConfirmClose(false)}>
         <DialogTitle>¿Deseas cerrar?</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Tienes cambios no guardados. ¿Estás seguro que deseas cerrar este formulario?
+          <DialogContentText id="building-dialog-description">
+            Tienes cambios sin guardar. ¿Deseas salir sin guardar?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
