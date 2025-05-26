@@ -194,7 +194,6 @@ class ContractSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        """Crea un contrato asegurando que la habitación solo se asigne si está realmente libre."""
         with transaction.atomic():
             room = validated_data["room"]
 
@@ -215,7 +214,6 @@ class ContractSerializer(serializers.ModelSerializer):
             # Inicializar fechas
             current_date = contract.start_date
             end_date = contract.end_date
-
             today = datetime.today().date()
 
             while current_date <= end_date:

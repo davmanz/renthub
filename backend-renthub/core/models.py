@@ -172,7 +172,6 @@ class Contract(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="contracts")
     room = models.ForeignKey("core.Room", on_delete=models.CASCADE, related_name="contracts")  
-
     start_date = models.DateField()
     end_date = models.DateField()
     rent_amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -246,7 +245,7 @@ class RentPaymentHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     contract = models.ForeignKey("core.Contract", on_delete=models.CASCADE, related_name="rent_payments")
     month_paid = models.CharField(max_length=20)
-    payment_date = models.DateField(auto_now_add=True)
+    payment_date = models.DateField(auto_now_add=True, blank=True, null=True)
     admin_comment = models.TextField(blank=True, null=True)
     user_comment = models.TextField(blank=True, null=True)
     receipt_image = models.ImageField(

@@ -8,6 +8,7 @@ import { Edit } from "@mui/icons-material";
 import { useEffect, useState, useMemo } from "react";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
+import { UserInterface, DocumentType, FormDataUserInterface } from "../../../../types/types";
 
 // VALIDACIONES
 const VALIDATION_RULES: Record<string, ValidationRule> = {
@@ -23,7 +24,7 @@ const VALIDATION_RULES: Record<string, ValidationRule> = {
 
 // CAMPOS EDITABLES
 interface Field {
-  name: keyof User | 'document_type';
+  name: keyof UserInterface | 'document_type';
   label: string;
 }
 
@@ -37,32 +38,10 @@ const fields: Field[] = [
   { name: "role", label: "Rol" }
 ];
 
-// Primero definimos las interfaces necesarias
-interface DocumentType {
-  id: number;
-  name: string;
-}
-
-interface User {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone_number: string;
-  document_type?: DocumentType;
-  document_number: string;
-  role: 'tenant' | 'admin' | 'superadmin';
-}
-
-interface FormData extends Omit<User, 'document_type'> {
-  document_type: number | undefined;
-  [key: string]: string | number | undefined;
-}
-
 interface EditUserModalProps {
   open: boolean;
   onClose: () => void;
-  user: User | null;
+  user: UserInterface | null;
   onUserUpdated: () => void;
 }
 
@@ -70,6 +49,17 @@ interface ValidationRule {
   pattern: RegExp;
   message: string;
 }
+
+// Estado inicial
+const initialFormState: FormDataUserInterface = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone_number: '',
+  document_type: '',
+  document_number: '',
+  role: ''
+};
 
 // COMPONENTE DE ERROR
 const ErrorMessage: React.FC<{ error?: string }> = ({ error }) =>
@@ -81,7 +71,8 @@ const ErrorMessage: React.FC<{ error?: string }> = ({ error }) =>
 
 // Componente principal con tipos
 const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUserUpdated }) => {
-  const [formData, setFormData] = useState<FormData>({} as FormData);
+
+  const [formData, setFormData] = useState<FormDataUserInterface>(initialFormState);
   const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>({});
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -90,10 +81,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUs
 
   useEffect(() => {
     const init = async () => {
+
       if (!user) return;
+
       const initState: Record<string, boolean> = {};
+
       fields.forEach(f => initState[f.name] = false);
+
       setEnabledFields(initState);
+      
       setFormData({
         ...user,
         document_type: user.document_type?.id || ""
@@ -102,7 +98,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUs
         const res = await api.get(endpoints.userManagement.documentTypes);
         setDocumentTypes(res.data);
       } catch (err) {
-        console.error("Error cargando tipos de documento", err);
       }
       setIsLoading(false);
     };
@@ -137,10 +132,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUs
       if (!enabledFields[f.name]) return;
       const oldValue = f.name === "document_type"
         ? user?.document_type?.name || "Sin tipo"
-        : user?.[f.name as keyof User];
+        : user?.[f.name as keyof UserInterface];
       const newValue = f.name === "document_type"
         ? documentTypes.find(dt => dt.id === formData[f.name])?.name || "Desconocido"
-        : formData[f.name as keyof FormData];
+        : formData[f.name as keyof FormDataUserInterface];
       if (String(oldValue) !== String(newValue)) {
         updates.push(`Se cambiará el campo ${f.label} de "${oldValue}" a "${newValue}"`);
       }
@@ -161,15 +156,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUs
   };
 
   const handleSave = async () => {
-    const payload: Partial<FormData> = {};
+    const payload: Partial<FormDataUserInterface> = {};
     fields.forEach(f => {
       if (enabledFields[f.name]) {
-        // Aseguramos que el tipo sea correcto antes de asignarlo
         if (f.name === 'document_type') {
-          // Convertimos explícitamente a número si es document_type
-          payload[f.name] = Number(formData[f.name]) || undefined;
+          const value = formData[f.name];
+          payload[f.name] = typeof value === 'string' ? parseInt(value, 10) : value;
         } else {
-          payload[f.name as keyof FormData] = formData[f.name as keyof FormData];
+          payload[f.name as keyof FormDataUserInterface] = formData[f.name as keyof FormData];
         }
       }
     });
@@ -294,7 +288,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ open, onClose, user, onUs
                       <TextField
                         fullWidth
                         label={field.label}
-                        value={formData[field.name as keyof FormData] || ""}
+                        value={formData[field.name as keyof FormDataUserInterface] || ""}
                         onChange={(e) => handleChange(field.name, e.target.value)}
                         disabled={!enabledFields[field.name]}
                         margin="dense"

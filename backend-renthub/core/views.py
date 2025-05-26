@@ -49,7 +49,6 @@ def send_email_activate(user):
     mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
     send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
 
-
 ########################################################################################################
 ####                                                                                                ####
 ####            VISTA DE USUARIOS                                                                   ####

@@ -1,17 +1,65 @@
 //Creacion de Usuarios
-export interface UserFormData {
+export interface UserInterface {
+  id: string;
   email: string;
-  password: string;
+  password?: string;
   first_name: string;
   last_name: string;
   phone_number: string;
-  document_type_id: string;
+  role: string;
+  document_type: {
+    id: string;
+    name: string;
+  };
+  document_number: string;
+  document_type_id?: string; // puedes mantenerlo si es usado como auxiliar en formularios
+  profile_photo: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  date_joined: string;
+  reference_1: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    document_type: {
+      id: string;
+      name: string;
+    };
+    document_number: string;
+    phone_number: string;
+  };
+  reference_2: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    document_type: {
+      id: string;
+      name: string;
+    };
+    document_number: string;
+    phone_number: string;
+  } | null;
+}
+
+
+// Definir interfaz para el formulario
+export interface FormDataUserInterface {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string;
+  document_type: number | string; // Permitir ambos tipos
   document_number: string;
   role: string;
-  reference_1: string;
-  reference_2: string;
-  references_count: number;
 }
+
+
+
+export interface DocumentType {
+  id: string;
+  name: string;
+}
+
 
 export interface Reference {
   id: string;

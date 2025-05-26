@@ -1,8 +1,8 @@
 // components/utils/UserValidation.ts
-import {UserFormData} from "../../types/types";
+import {UserInterface} from "../../types/types";
 
 export const validateUserForm = (
-  formData: UserFormData,
+  formData: UserInterface,
   isEditMode: boolean
 ): Record<string, string> => {
   const newErrors: Record<string, string> = {};
