@@ -1,30 +1,30 @@
 import {
-  Typography,
-  Paper,
-  TextField,
-  Grid,
-  Alert,
-  Avatar,
-  Box,
-  Chip,
-  CircularProgress,
-  Skeleton
+  Typography, Paper, TextField, Grid, Alert,
+  Avatar, Box, Chip,  Skeleton, MenuItem, Select,
+  FormControl, InputLabel,
 } from "@mui/material";
 import { Edit } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
+import {ChangeRequest , Changes} from "../../types/types"
 
 const allowedFields = [
   { value: "first_name", label: "Nombre" },
   { value: "last_name", label: "Apellido" },
   { value: "email", label: "Correo electrónico" },
+  { value: "phone_number", label: "Número de teléfono" },
+  { value: "document_type", label: "Tipo de documento" },
   { value: "document_number", label: "Número de documento" },
 ];
 
+
+
 const SettingsPage = () => {
   const [user, setUser] = useState<any>(null);
-  const [changeRequests, setChangeRequests] = useState([]);
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<any[]>([]);
+
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingRequests, setLoadingRequests] = useState(true);
 
@@ -37,12 +37,6 @@ const SettingsPage = () => {
   const [newValue, setNewValue] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
   const [submittingRequest, setSubmittingRequest] = useState(false);
-
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState("");
-  const [loadingPassword, setLoadingPassword] = useState(false);
 
   const fetchUser = async () => {
     try {
@@ -66,9 +60,19 @@ const SettingsPage = () => {
     }
   };
 
+  const fetchDocumentTypes = async () => {
+    try {
+      const res = await api.get(endpoints.userManagement.documentTypes);
+      setDocumentTypes(res.data);
+    } catch {
+      setDocumentTypes([]);
+    }
+  };
+
   useEffect(() => {
     fetchUser();
     fetchRequests();
+    fetchDocumentTypes();
   }, []);
 
   const handlePhotoSubmit = async () => {
@@ -100,11 +104,16 @@ const SettingsPage = () => {
 
     setSubmittingRequest(true);
     try {
-      await api.post(endpoints.changeRequests.create, {
-        field: fieldToChange,
-        current_value: currentValue,
-        new_value: newValue,
-      });
+      // Crear el objeto changes usando la interfaz Changes
+      const requestChanges: { changes: Partial<Changes> } = {
+        changes: {
+          [fieldToChange as keyof Changes]: newValue
+        }
+      };
+
+      await api.post(endpoints.changeRequests.create, requestChanges);
+      
+      // Limpiar el formulario y actualizar la lista
       setRequestMessage("Solicitud enviada para revisión.");
       setFieldToChange("");
       setCurrentValue("");
@@ -121,28 +130,13 @@ const SettingsPage = () => {
     }
   };
 
-  const handlePasswordSubmit = async () => {
-    if (newPassword !== repeatPassword) {
-      setPasswordMessage("Las nuevas contraseñas no coinciden.");
-      return;
-    }
-
-    setLoadingPassword(true);
-    try {
-      await api.post(endpoints.changeRequests.create, {
-        old_password: oldPassword,
-        new_password: newPassword,
-        new_password_repeat: repeatPassword,
-      });
-      setPasswordMessage("Contraseña actualizada correctamente.");
-      setOldPassword("");
-      setNewPassword("");
-      setRepeatPassword("");
-    } catch {
-      setPasswordMessage("Error al actualizar la contraseña.");
-    } finally {
-      setLoadingPassword(false);
-    }
+  // Agregar esta función auxiliar después de las declaraciones de estados
+  const isFieldPending = (fieldName: string) => {
+    return changeRequests.some(
+      (req) => 
+        Object.keys(req.changes)[0] === fieldName && 
+        (req.status === "pending")
+    );
   };
 
   return (
@@ -209,25 +203,34 @@ const SettingsPage = () => {
                   }}
                 >
                   <Typography>
-                    <strong>{field.label}:</strong> {user?.[field.value] || "—"}
+                    <strong>{field.label}:</strong>{" "}
+                    {field.value === "document_type"
+                      ? documentTypes.find((d) => d.id === user?.document_type.id)?.name || "—"
+                      : user?.[field.value] || "—"}
                   </Typography>
                   <Chip
                     icon={<Edit />}
-                    label="Solicitar"
+                    label={isFieldPending(field.value) ? "En revisión" : "Solicitar"}
                     onClick={() => {
-                      setFieldToChange(field.value);
-                      setCurrentValue(user?.[field.value] || "");
-                      setNewValue("");
+                      if (!isFieldPending(field.value)) {
+                        setFieldToChange(field.value);
+                        setCurrentValue(user?.[field.value] || "");
+                        setNewValue("");
+                      }
                     }}
                     size="small"
                     sx={{
-                      bgcolor: "#3949ab",
+                      bgcolor: isFieldPending(field.value) ? "#666" : "#3949ab",
                       color: "white",
                       fontSize: "0.8rem",
                       px: 1.5,
                       "& .MuiChip-icon": { color: "white" },
-                      "&:hover": { bgcolor: "#5c6bc0" },
+                      "&:hover": { 
+                        bgcolor: isFieldPending(field.value) ? "#666" : "#5c6bc0" 
+                      },
+                      cursor: isFieldPending(field.value) ? "not-allowed" : "pointer",
                     }}
+                    disabled={isFieldPending(field.value)}
                   />
                 </Box>
               </Grid>
@@ -243,18 +246,42 @@ const SettingsPage = () => {
               <TextField
                 label="Valor actual"
                 fullWidth
-                value={currentValue}
+                value={
+                  fieldToChange === "document_type"
+                    ? documentTypes.find((d) => d.id === currentValue)?.name || currentValue
+                    : currentValue
+                }
                 disabled
               />
             </Grid>
+
             <Grid item xs={12} md={4}>
-              <TextField
-                label="Nuevo valor"
-                fullWidth
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-              />
+              {fieldToChange === "document_type" ? (
+                <FormControl fullWidth>
+                  <InputLabel sx={{ color: "#ccc" }}>Nuevo tipo</InputLabel>
+                  <Select
+                    value={newValue}
+                    label="Nuevo tipo"
+                    onChange={(e) => setNewValue(e.target.value)}
+                    sx={{ color: "white", bgcolor: "#2c2c2c" }}
+                  >
+                    {documentTypes.map((type) => (
+                      <MenuItem key={type.id} value={type.id}>
+                        {type.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : (
+                <TextField
+                  label="Nuevo valor"
+                  fullWidth
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                />
+              )}
             </Grid>
+
             <Grid item xs={12} md={4}>
               <Chip
                 icon={<Edit />}
@@ -300,10 +327,21 @@ const SettingsPage = () => {
               bgcolor: "#2c2c2c",
             }}
           >
-            <Typography><strong>Campo:</strong> {req.field}</Typography>
-            <Typography><strong>De:</strong> {req.current_value}</Typography>
-            <Typography><strong>A:</strong> {req.new_value}</Typography>
-            <Typography><strong>Estado:</strong> {req.status}</Typography>
+            <Typography>
+              <strong>Campo:</strong> {
+              allowedFields.find(
+                field => field.value === Object.keys(req.changes)[0])?.label ||
+                Object.keys(req.changes)[0]}
+            </Typography>
+            <Typography>
+              <strong>Nuevo valor:</strong> {Object.values(req.changes)[0]}
+            </Typography>
+            <Typography>
+              <strong>Estado:</strong> {req.status}
+            </Typography>
+            <Typography>
+              <strong>Fecha:</strong> {new Date(req.created_at).toLocaleDateString()}
+            </Typography>
             {req.review_comment && (
               <Typography>
                 <strong>Comentario:</strong> {req.review_comment}
@@ -314,61 +352,6 @@ const SettingsPage = () => {
       ) : (
         <Typography>No hay solicitudes registradas.</Typography>
       )}
-
-      {/* 🔐 CAMBIO DE CONTRASEÑA */}
-      <Typography variant="h6" sx={{ mt: 6 }}>
-        Cambiar Contraseña
-      </Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Contraseña actual"
-            type="password"
-            fullWidth
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Nueva contraseña"
-            type="password"
-            fullWidth
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Repetir nueva contraseña"
-            type="password"
-            fullWidth
-            value={repeatPassword}
-            onChange={(e) => setRepeatPassword(e.target.value)}
-          />
-        </Grid>
-        <Grid item xs={12} display="flex" justifyContent="flex-end">
-          <Chip
-            icon={<Edit />}
-            label="Cambiar contraseña"
-            onClick={handlePasswordSubmit}
-            clickable
-            disabled={loadingPassword}
-            sx={{
-              mt: 1.5,
-              bgcolor: "#3949ab",
-              color: "white",
-              "& .MuiChip-icon": { color: "white" },
-              "&:hover": { bgcolor: "#5c6bc0" },
-            }}
-          />
-        </Grid>
-        {passwordMessage && (
-          <Grid item xs={12}>
-            <Alert severity="info">{passwordMessage}</Alert>
-          </Grid>
-        )}
-      </Grid>
     </Paper>
   );
 };

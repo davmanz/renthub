@@ -1,9 +1,11 @@
-import uuid
 import os
+import uuid
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from datetime import datetime
+from django.core.exceptions import ValidationError
+from django.contrib.postgres.fields import JSONField
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+
 
 ########################################################################################################
 ####                                                                                                ####
@@ -221,11 +223,9 @@ class UserChangeRequest(models.Model):
         ("approved", "Aprobado"),
         ("rejected", "Rechazado"),
     ]
-
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey("core.CustomUser", on_delete=models.CASCADE, related_name="change_requests")
-    field = models.CharField(max_length=50)  # Campo que desea cambiar (ej. 'first_name', 'email')
-    current_value = models.TextField()
-    new_value = models.TextField()
+    changes = models.JSONField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -233,7 +233,7 @@ class UserChangeRequest(models.Model):
     review_comment = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"Solicitud de {self.user.email} - {self.field} → {self.new_value} ({self.status})"
+        return f"Solicitud de {self.user.email} - {self.changes} ({self.status})"
 
 ########################################################################################################
 ####                                                                                                ####

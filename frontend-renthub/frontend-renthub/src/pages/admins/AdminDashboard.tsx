@@ -92,21 +92,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleLaundryUpdated = () => {
-    setData(prev => {
-      if (!prev || !selectedPayment) return prev;
-      return {
-        ...prev,
-        washing_pendings: {
-          ...prev.washing_pendings,
-          pending_admin: prev.washing_pendings.pending_admin.filter(p => p.id !== selectedPayment.id)
-        }
-      };
-    });
-    setOpenRejectLaundryModal(false);
-    setOpenRescheduleLaundryModal(false);
-  };
-
   if (loading) return <AdminLayout><Container sx={{ textAlign: "center", mt: 8 }}><CircularProgress /></Container></AdminLayout>;
   if (!data) return <AdminLayout><Container><Alert severity="error">No se pudo cargar el dashboard.</Alert></Container></AdminLayout>;
 

@@ -1,3 +1,7 @@
+import re
+from uuid import uuid4
+from datetime import date, timedelta, datetime
+
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
@@ -13,31 +17,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from core.utils.gmail_api import send_gmail_api_email
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
-from core.models import (CustomUser, 
-                         Contract, 
-                         RentPaymentHistory,                         
-                         Room, 
-                         Building,
-                         ReferencePerson,
-                         DocumentType,
-                         LaundryBooking,
-                         UserChangeRequest
-                         )
-from core.serializers import (CustomUserSerializer, 
-                              ContractSerializer, 
-                              RentPaymentSerializer, 
-                              RoomSerializer, 
-                              BuildingSerializer,
-                              ReferencePersonSerializer,
-                              DocumentTypeSerializer,
-                              LaundryBookingSerializer,
-                              UserChangeRequestSerializer
-                              )
-
-from datetime import date, timedelta, datetime
-from uuid import uuid4
-import re
-
+from core.models import (
+    CustomUser, Contract, RentPaymentHistory, Room, Building,
+    ReferencePerson,DocumentType,LaundryBooking,UserChangeRequest
+    )
+from core.serializers import (
+    CustomUserSerializer, ContractSerializer, RentPaymentSerializer,
+    RoomSerializer, BuildingSerializer, ReferencePersonSerializer,
+    DocumentTypeSerializer, LaundryBookingSerializer, UserChangeRequestSerializer
+    )
 
 ########################################################################################################
 ####                                                                                                ####
@@ -368,16 +356,16 @@ class UserChangeRequestViewSet(viewsets.ModelViewSet):
         if change_request.status != "pending":
             return Response({"detail": "Esta solicitud ya fue procesada."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Aplicar el cambio al usuario
-        setattr(change_request.user, change_request.field, change_request.new_value)
+        for field, new_value in change_request.changes.items():
+            setattr(change_request.user, field, new_value)
         change_request.user.save()
 
         change_request.status = "approved"
         change_request.reviewed_by = user
         change_request.save()
 
-        return Response({"detail": "Solicitud aprobada y cambio aplicado."}, status=status.HTTP_200_OK)
-
+        return Response({"detail": "Solicitud aprobada y cambios aplicados."}, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=["patch"])
     def reject(self, request, pk=None):
         user = request.user
@@ -500,7 +488,7 @@ class ReferencePersonViewSet(viewsets.ModelViewSet):
 class DocumentTypesViewSet(ReadOnlyModelViewSet):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsTenant]
 
 ########################################################################################################
 ####                                                                                                ####

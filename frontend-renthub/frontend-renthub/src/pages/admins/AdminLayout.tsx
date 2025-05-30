@@ -1,24 +1,9 @@
 import {
-  Box,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Button,
-  Typography,
-  AppBar,
-  Toolbar,
-  Avatar,
-  ListItemIcon,
+  Box, Drawer, List, ListItemText, Divider, Button,
+  Typography, AppBar, Toolbar, Avatar, ListItemIcon, ListItemButton,
 } from "@mui/material";
 import {
-  Dashboard,
-  People,
-  Assignment,
-  Apartment,
-  LocalLaundryService,
-  Logout,
+  Dashboard, People, Assignment, Apartment, LocalLaundryService, Logout, SettingsSuggest, Receipt
 } from "@mui/icons-material";
 import { ReactNode, useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -43,7 +28,6 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         setUserName(`${response.data.first_name} ${response.data.last_name}`);
         setProfilePhoto(response.data.profile_photo);
       } catch (error) {
-        console.error("Error al obtener el usuario:", error);
         navigate("/login");
       }
     };
@@ -87,35 +71,40 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
         <Divider sx={{ bgcolor: "#444", mb: 2 }} />
 
         <List>
-          <ListItem button onClick={() => navigate("/dashboard/admin")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+          <ListItemButton onClick={() => navigate("/dashboard/admin")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><Dashboard /></ListItemIcon>
             <ListItemText primary="Panel de Administración" />
-          </ListItem>
+          </ListItemButton>
 
-          <ListItem button onClick={() => navigate("/dashboard/admin/users")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+          <ListItemButton onClick={() => navigate("/dashboard/admin/users")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><People /></ListItemIcon>
             <ListItemText primary="Gestión de Usuarios" />
-          </ListItem>
+          </ListItemButton>
 
-          <ListItem button onClick={() => navigate("/dashboard/admin/contract")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+          <ListItemButton onClick={() => navigate("/dashboard/admin/contract")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><Assignment /></ListItemIcon>
             <ListItemText primary="Gestión de Contratos" />
-          </ListItem>
+          </ListItemButton>
 
-          <ListItem button onClick={() => navigate("/dashboard/admin/sites")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+          <ListItemButton onClick={() => navigate("/dashboard/admin/sites")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><Apartment /></ListItemIcon>
             <ListItemText primary="Gestión de Sitios" />
-          </ListItem>
+          </ListItemButton>
 
-          <ListItem button onClick={() => navigate("/dashboard/admin/payment-history")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-            <ListItemIcon sx={{ color: "#90caf9" }}><Assignment /></ListItemIcon>
+          <ListItemButton onClick={() => navigate("/dashboard/admin/payment-history")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}><Receipt /></ListItemIcon>
             <ListItemText primary="Historial de Pagos" />
-          </ListItem>
+          </ListItemButton>
 
-          <ListItem button onClick={() => navigate("/dashboard/admin/laundry")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+          <ListItemButton onClick={() => navigate("/dashboard/admin/laundry")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
             <ListItemIcon sx={{ color: "#90caf9" }}><LocalLaundryService /></ListItemIcon>
             <ListItemText primary="Gestión de Lavandería" />
-          </ListItem>
+          </ListItemButton>
+
+          <ListItemButton onClick={() => navigate("/dashboard/admin/change-requests")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}><SettingsSuggest /></ListItemIcon>
+            <ListItemText primary="Solicitudes de Cambio" />
+          </ListItemButton>
         </List>
 
         <Box sx={{ p: 2, mt: "auto" }}>

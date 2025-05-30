@@ -71,7 +71,7 @@ export interface Props {
   open: boolean;
   onClose: () => void;
   onUserSaved: () => void;
-  userToEdit?: UserFormData | null;
+  userToEdit?: UserInterface | null;
 }
 
 
@@ -181,4 +181,30 @@ export interface CreateContractProps {
 
 export interface FormErrors {
   [key: string]: string;
+}
+
+export interface ChangeRequest {
+  id: number;
+  user: string;
+  changes: {
+    first_name?: string;
+    last_name?: string;
+    document_type?: string;
+    document_number?: string;
+    email?: string;
+    phone_number?: string;
+  };
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  reviewed_by: string | null;
+  review_comment: string | null;
+}
+
+export interface Changes {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone_number?: string;
+  document_type?: number;
+  document_number?: string;
 }

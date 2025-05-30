@@ -35,9 +35,7 @@ const endpoints = {
   },
 
   dashboard: {
-    //user: `${API_BASE}/user-dashboard/`,
     admin: `${API_BASE}/admin-dashboard/`,
-    //laundry: `${API_BASE}/laundry-dashboard/`,
   },
 
   payments: {

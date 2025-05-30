@@ -2,19 +2,9 @@ import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
 import CreateContractModal from "./modals/ContractManagement/CreateContract";
 import {
-  Container,
-  Paper,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Button,
-  TextField,
-  IconButton,
-  Chip,
+  Container, Paper, Typography, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow,
+  Button, TextField, IconButton, Chip,
 } from "@mui/material";
 import { Edit, Delete, LibraryAdd } from "@mui/icons-material";
 import api from "../../api/api";

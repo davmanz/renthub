@@ -246,33 +246,34 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserChangeRequest
         fields = [
-            "id", "user", "field", "current_value", "new_value",
+            "id", "user", "changes",
             "status", "created_at", "reviewed_by", "review_comment"
         ]
         read_only_fields = ["user", "status", "created_at", "reviewed_by", "review_comment"]
 
-    def validate_field(self, value):
-        if value not in self.ALLOWED_FIELDS:
-            raise serializers.ValidationError(f"No puedes solicitar cambios en el campo '{value}'.")
+    def validate_changes(self, value):
+        user = self.context["request"].user
+
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("El campo 'changes' debe ser un diccionario.")
+
+        for field in value.keys():
+            if field not in self.ALLOWED_FIELDS:
+                raise serializers.ValidationError(f"No puedes solicitar cambio en el campo '{field}'.")
+
+            if UserChangeRequest.objects.filter(
+                user=user,
+                changes__has_key=field,
+                status="pending"
+            ).exists():
+                raise serializers.ValidationError(f"Ya tienes una solicitud pendiente para el campo '{field}'.")
+
         return value
 
     def create(self, validated_data):
-        request = self.context["request"]
-        validated_data["user"] = request.user
+        validated_data["user"] = self.context["request"].user
         return super().create(validated_data)
-    
-    def validate(self, data):
-        user = self.context["request"].user
-        field = data.get("field")
 
-        if UserChangeRequest.objects.filter(
-            user=user,
-            field=field,
-            status="pending"
-        ).exists():
-            raise serializers.ValidationError(f"Ya tienes una solicitud pendiente para el campo '{field}'.")
-
-        return data
 
 ########################################################################################################
 ####                                                                                                ####
@@ -399,11 +400,6 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
 ####                                                                                                ####
 ########################################################################################################
 class DocumentTypeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DocumentType
-        fields = "__all__"
-
-
     class Meta:
         model = DocumentType
         fields = "__all__"
