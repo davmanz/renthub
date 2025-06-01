@@ -1,16 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, MenuItem, Select, FormControl, InputLabel, Grid, Alert
+  TextField, Button, MenuItem, Select, FormControl, 
+  InputLabel, Grid, Alert, CircularProgress
 } from "@mui/material";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
 import ReferenceModal from "./ReferenceModal";
-import {UserFormData, Reference, Props} from "../../../../types/types"
+import { UserFormDataInterface, Reference, Props } from "../../../../types/types";
 import { validateUserForm } from "../../../../components/utils/UsersValidation";
 
-const CreateUser = ({ open, onClose, onUserSaved, userToEdit }: Props) => {
-  const [formData, setFormData] = useState<UserFormData>({
+// Constantes
+const REFERENCE_COUNTS = {
+  NONE: "0",
+  ONE: "1",
+  TWO: "2"
+} as const;
+
+// Tipos
+interface SelectChangeEvent {
+  target: {
+    name: string;
+    value: string;
+  };
+}
+
+const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
+  const initialFormState: UserFormDataInterface = {
     email: "",
     password: "",
     first_name: "",
@@ -18,38 +34,18 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }: Props) => {
     phone_number: "",
     document_type_id: "",
     document_number: "",
-    role: "tenant",
-    reference_1: "",
-    reference_2: "",
+    reference_1_id: "",
+    reference_2_id: "",
     references_count: 0,
-  });
+  };
 
+  const [formData, setFormData] = useState<UserFormDataInterface>(initialFormState);
   const [documentTypes, setDocumentTypes] = useState([]);
   const [availableReferences, setAvailableReferences] = useState<Reference[]>([]);
   const [selectedReferenceField, setSelectedReferenceField] = useState<string | null>(null);
   const [openReferenceModal, setOpenReferenceModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (userToEdit) {
-      setFormData(userToEdit);
-    } else {
-      setFormData({
-        email: "",
-        password: "",
-        first_name: "",
-        last_name: "",
-        phone_number: "",
-        document_type_id: "",
-        document_number: "",
-        role: "tenant",
-        reference_1: "",
-        reference_2: "",
-        references_count: 0,
-      });
-    }
-  }, [userToEdit]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -61,98 +57,203 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }: Props) => {
         setDocumentTypes(docTypes.data);
         setAvailableReferences(refs.data);
       } catch (err) {
-        console.error("Error al obtener tipos de documento o referencias", err);
+        console.error("Error al obtener datos iniciales:", err);
+        setErrors(prev => ({
+          ...prev,
+          general: "Error al cargar los datos iniciales"
+        }));
       }
     };
     fetchInitialData();
   }, []);
 
+  // Manejar cambios en el número de referencias
   useEffect(() => {
     if (formData.references_count < 1) {
-      setFormData(prev => ({ ...prev, reference_1: "", reference_2: "" }));
+      setFormData(prev => ({ ...prev, reference_1_id: "", reference_2_id: "" }));
+      setErrors(prev => {
+        const { reference_1_id, reference_2_id, ...rest } = prev;
+        return rest;
+      });
     } else if (formData.references_count === 1) {
-      setFormData(prev => ({ ...prev, reference_2: "" }));
+      setFormData(prev => ({ ...prev, reference_2_id: "" }));
+      setErrors(prev => {
+        const { reference_2_id, ...rest } = prev;
+        return rest;
+      });
     }
   }, [formData.references_count]);
 
-  const handleChange = (e: any) => {
+  // Handlers memorizados
+  const handleChange = useCallback((
+    e: React.ChangeEvent<HTMLInputElement> | SelectChangeEvent
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    // Limpiar error del campo cuando cambia
+    setErrors(prev => ({ ...prev, [name]: "" }));
+  }, []);
 
-  const validateForm = (): boolean => {
-    const validationErrors = validateUserForm(formData, !!userToEdit);
+  const validateForm = useCallback((): boolean => {
+    const validationErrors = validateUserForm(formData, false);
+    
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0;
-  };
-  
+  }, [formData]);
+
   const handleSubmit = async () => {
+
     if (!validateForm()) return;
 
     setLoading(true);
     try {
-      if (userToEdit) {
-        await api.put(`${endpoints.userManagement.user}${userToEdit.id}/`, formData);
-      } else {
-        await api.post(endpoints.userManagement.user, formData);
-      }
+      const submitData = {
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone_number: formData.phone_number,
+        document_type_id: formData.document_type_id,
+        document_number: formData.document_number,
+        ...(formData.reference_1_id && { reference_1_id: formData.reference_1_id }),
+        ...(formData.reference_2_id && { reference_2_id: formData.reference_2_id })
+      };
+
+      // Solo realizamos POST para crear nuevo usuario
+      await api.post(endpoints.userManagement.user, submitData);
+      
       onUserSaved();
       onClose();
-    } catch (err) {
-      console.error("Error al guardar usuario", err);
+    } catch (err: any) {
+      console.error("Error al crear usuario:", err);
+      setErrors(prev => ({
+        ...prev,
+        general: err.response?.data?.message || "Error al crear el usuario"
+      }));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReferenceSelection = (field: string) => {
+  const handleReferenceSelection = useCallback((field: string) => {
     setSelectedReferenceField(field);
     setOpenReferenceModal(true);
-  };
+  }, []);
 
-  const handleReferenceAdded = (newRef: Reference) => {
+  const handleReferenceAdded = useCallback((newRef: Reference) => {
     setAvailableReferences(prev => [...prev, newRef]);
-  };
+  }, []);
 
-  const selectReference = (id: string) => {
+  const selectReference = useCallback((id: string) => {
     if (selectedReferenceField) {
-      setFormData(prev => ({ ...prev, [selectedReferenceField]: id }));
+      const fieldName = `${selectedReferenceField}_id`;
+      setFormData(prev => ({ ...prev, [fieldName]: id }));
       setOpenReferenceModal(false);
     }
-  };
+  }, [selectedReferenceField]);
 
-  const getReferenceLabel = (id: string) => {
+  const getReferenceLabel = useCallback((id: string) => {
     const ref = availableReferences.find(r => r.id === id);
     return ref ? `${ref.first_name} ${ref.last_name}` : "Referencia no encontrada";
-  };
+  }, [availableReferences]);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth>
-      <DialogTitle>{userToEdit ? "Editar Usuario" : "Crear Usuario"}</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      fullWidth 
+      aria-labelledby="user-dialog-title"
+    >
+      <DialogTitle id="user-dialog-title">
+        Crear Usuario
+      </DialogTitle>
+      
       <DialogContent>
+        {errors.general && (
+          <Alert severity="error" sx={{ mb: 2 }}>{errors.general}</Alert>
+        )}
+        
         <Grid container spacing={2}>
+          {/* Campos personales */}
           <Grid item xs={6}>
-            <TextField fullWidth label="Nombre" name="first_name" value={formData.first_name} onChange={handleChange} error={!!errors.first_name} helperText={errors.first_name} />
+            <TextField
+              fullWidth
+              label="Nombre"
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleChange}
+              error={!!errors.first_name}
+              helperText={errors.first_name}
+              disabled={loading}
+              required
+            />
           </Grid>
           <Grid item xs={6}>
-            <TextField fullWidth label="Apellido" name="last_name" value={formData.last_name} onChange={handleChange} error={!!errors.last_name} helperText={errors.last_name} />
+            <TextField
+              fullWidth
+              label="Apellido"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              error={!!errors.last_name}
+              helperText={errors.last_name}
+              disabled={loading}
+              required
+            />
           </Grid>
 
           <Grid item xs={6}>
-            <TextField fullWidth label="Correo Electrónico" name="email" type="email" value={formData.email} onChange={handleChange} error={!!errors.email} helperText={errors.email} />
+            <TextField
+              fullWidth
+              label="Correo Electrónico"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              disabled={loading}
+              required
+            />
           </Grid>
           <Grid item xs={6}>
-            <TextField fullWidth label="Teléfono" name="phone_number" value={formData.phone_number} onChange={handleChange} />
+            <TextField
+              fullWidth
+              label="Teléfono"
+              name="phone_number"
+              value={formData.phone_number}
+              onChange={handleChange}
+              error={!!errors.phone_number}
+              helperText={errors.phone_number}
+              disabled={loading}
+            />
           </Grid>
 
           <Grid item xs={12}>
-            <TextField fullWidth label="Contraseña" name="password" type="password" value={formData.password} onChange={handleChange} required={!userToEdit} error={!!errors.password} helperText={errors.password} />
+            <TextField
+              fullWidth
+              label="Contraseña"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              error={!!errors.password}
+              helperText={errors.password}
+              disabled={loading}
+            />
           </Grid>
 
           <Grid item xs={6}>
             <FormControl fullWidth>
               <InputLabel>Tipo de Documento</InputLabel>
-              <Select name="document_type_id" value={formData.document_type_id} onChange={handleChange} error={!!errors.document_type_id}>
+              <Select
+                name="document_type_id"
+                value={formData.document_type_id}
+                onChange={handleChange}
+                error={!!errors.document_type_id}
+                disabled={loading}
+              >
                 {documentTypes.map((doc: any) => (
                   <MenuItem key={doc.id} value={doc.id}>{doc.name}</MenuItem>
                 ))}
@@ -161,44 +262,93 @@ const CreateUser = ({ open, onClose, onUserSaved, userToEdit }: Props) => {
             </FormControl>
           </Grid>
           <Grid item xs={6}>
-            <TextField fullWidth label="Número de Documento" name="document_number" value={formData.document_number} onChange={handleChange} error={!!errors.document_number} helperText={errors.document_number} />
+            <TextField
+              fullWidth
+              label="Número de Documento"
+              name="document_number"
+              value={formData.document_number}
+              onChange={handleChange}
+              error={!!errors.document_number}
+              helperText={errors.document_number}
+              disabled={loading}
+            />
           </Grid>
 
+          {/* Sección de referencias */}
           <Grid item xs={12}>
             <FormControl fullWidth>
               <InputLabel>Cantidad de Referencias</InputLabel>
-              <Select name="references_count" value={formData.references_count.toString()} onChange={handleChange}>
-                <MenuItem value="0">Ninguna</MenuItem>
-                <MenuItem value="1">1 Referencia</MenuItem>
-                <MenuItem value="2">2 Referencias</MenuItem>
+              <Select
+                name="references_count"
+                value={formData.references_count.toString()}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <MenuItem value={REFERENCE_COUNTS.NONE}>Ninguna</MenuItem>
+                <MenuItem value={REFERENCE_COUNTS.ONE}>1 Referencia</MenuItem>
+                <MenuItem value={REFERENCE_COUNTS.TWO}>2 Referencias</MenuItem>
               </Select>
             </FormControl>
           </Grid>
 
+          {/* Referencias dinámicas */}
           {formData.references_count > 0 && (
             <Grid item xs={12}>
-              <Button fullWidth variant="outlined" onClick={() => handleReferenceSelection("reference_1")}>
-                {formData.reference_1 ? getReferenceLabel(formData.reference_1) : "Seleccionar Referencia 1"}
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => handleReferenceSelection("reference_1")}
+                disabled={loading}
+              >
+                {formData.reference_1_id 
+                  ? getReferenceLabel(formData.reference_1_id) 
+                  : "Seleccionar Referencia 1"
+                }
               </Button>
-              {errors.reference_1 && <Alert severity="error">{errors.reference_1}</Alert>}
+              {errors.reference_1_id && (
+                <Alert severity="error">{errors.reference_1_id}</Alert>
+              )}
             </Grid>
           )}
 
           {formData.references_count > 1 && (
             <Grid item xs={12}>
-              <Button fullWidth variant="outlined" onClick={() => handleReferenceSelection("reference_2")}>
-                {formData.reference_2 ? getReferenceLabel(formData.reference_2) : "Seleccionar Referencia 2"}
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => handleReferenceSelection("reference_2")}
+                disabled={loading}
+              >
+                {formData.reference_2_id 
+                  ? getReferenceLabel(formData.reference_2_id) 
+                  : "Seleccionar Referencia 2"
+                }
               </Button>
-              {errors.reference_2 && <Alert severity="error">{errors.reference_2}</Alert>}
+              {errors.reference_2_id && (
+                <Alert severity="error">{errors.reference_2_id}</Alert>
+              )}
             </Grid>
           )}
         </Grid>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button onClick={handleSubmit} variant="contained" color="primary" disabled={loading}>
-          {loading ? "Guardando..." : userToEdit ? "Actualizar" : "Crear"}
+        <Button 
+          onClick={onClose} 
+          disabled={loading}
+          aria-label="Cancelar"
+        >
+          Cancelar
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          color="primary"
+          disabled={loading}
+          startIcon={loading && <CircularProgress size={20} />}
+          aria-label="Crear usuario"
+        >
+          {loading ? "Creando..." : "Crear"}
         </Button>
       </DialogActions>
 

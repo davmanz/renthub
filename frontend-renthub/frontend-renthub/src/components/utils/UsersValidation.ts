@@ -1,8 +1,8 @@
 // components/utils/UserValidation.ts
-import {UserInterface} from "../../types/types";
+import {UserFormDataInterface} from "../../types/types";
 
 export const validateUserForm = (
-  formData: UserInterface,
+  formData: UserFormDataInterface,
   isEditMode: boolean
 ): Record<string, string> => {
   const newErrors: Record<string, string> = {};
@@ -14,11 +14,11 @@ export const validateUserForm = (
   if (!formData.document_type_id) newErrors.document_type_id = "Tipo de documento requerido";
   if (!formData.document_number) newErrors.document_number = "Número de documento requerido";
 
-  if (formData.references_count > 0 && !formData.reference_1) {
-    newErrors.reference_1 = "Referencia 1 requerida";
+  if (formData.references_count > 0 && !formData.reference_1_id) {
+    newErrors.reference_1_id = "Referencia 1 requerida";
   }
-  if (formData.references_count > 1 && !formData.reference_2) {
-    newErrors.reference_2 = "Referencia 2 requerida";
+  if (formData.references_count > 1 && !formData.reference_2_id) {
+    newErrors.reference_2_id = "Referencia 2 requerida";
   }
 
   return newErrors;

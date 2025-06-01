@@ -80,9 +80,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
         # 🔐 RESTRICCIÓN POR ROL
         if user.is_superadmin():
-            pass  # Puede ver todo
+            queryset = queryset.exclude(id=user.id)  # Excluye al superadmin actual
         elif user.is_admin():
-            queryset = queryset.filter(role="tenant")
+            queryset = queryset.filter(role="tenant").exclude(id=user.id)  # Excluye al admin actual
         elif user.is_tenant():
             queryset = queryset.filter(id=user.id)
         else:
@@ -304,7 +304,8 @@ class RentPaymentViewSet(viewsets.ModelViewSet):
         if instance.status == "overdue" and receipt:
             instance.status = "pending_review"
             instance.admin_comment = ""
-            instance.save(update_fields=["status", "admin_comment"])
+            instance.payment_date = date.today()
+            instance.save(update_fields=["status", "admin_comment", "payment_date"])
 
         return super().update(request, *args, **kwargs)
 
@@ -488,7 +489,7 @@ class ReferencePersonViewSet(viewsets.ModelViewSet):
 class DocumentTypesViewSet(ReadOnlyModelViewSet):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
-    permission_classes = [IsTenant]
+    permission_classes = [IsAuthenticated]
 
 ########################################################################################################
 ####                                                                                                ####
@@ -684,7 +685,7 @@ class AdminDashboardView(APIView):
                     "building": payment.contract.room.building.name
                 },
                 "month_paid": payment.month_paid,
-                "payment_date": payment.payment_date.strftime("%Y-%m-%d"),
+                "payment_date": payment.payment_date.strftime("%Y-%m-%d") if payment.payment_date else None,
                 "status": payment.status,
                 "voucher_path": payment.receipt_image.url if payment.receipt_image else None,
                 "admin_comment": payment.admin_comment,

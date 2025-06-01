@@ -17,8 +17,8 @@ class Command(BaseCommand):
             CustomUser.objects.create_superuser(
                 email='admin@email.com',
                 password='admin',
-                first_name='FAdmin',
-                last_name='LUser',
+                first_name='Owner',
+                last_name='Admin',
                 phone_number='012345678',
                 is_verified=True,
                 is_active=True,

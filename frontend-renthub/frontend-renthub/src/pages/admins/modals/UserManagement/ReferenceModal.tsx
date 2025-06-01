@@ -15,13 +15,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import AddReferenceModal from "./AddReferenceModal";
 import { toast } from "react-toastify";
 import debounce from "lodash/debounce";
+import {Reference} from ".././../../../types/types"
 
-interface Reference {
-  id: string;
-  first_name: string;
-  last_name: string;
-  document_number: string;
-}
+
 
 interface ReferenceModalProps {
   open: boolean;
@@ -60,7 +56,7 @@ const ReferenceModal = ({
       (ref) =>
         ref.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ref.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ref.document_number.includes(searchQuery)
+        ref.document.number.includes(searchQuery)
     );
   }, [references, searchQuery]);
 
@@ -107,7 +103,7 @@ const ReferenceModal = ({
                         {ref.first_name} {ref.last_name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Doc: {ref.document_number}
+                        {ref.document.name}: {ref.document.number}
                       </Typography>
                     </Box>
                   </Button>

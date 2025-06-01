@@ -19,9 +19,62 @@ from core.models import Contract, RentPaymentHistory, Room, Building, ReferenceP
 ####                                                                                                ####
 ########################################################################################################
 class ReferencePersonSerializer(serializers.ModelSerializer):
+    document = serializers.SerializerMethodField()
+
+    # Entrada en POST/PUT como UUID
+    document_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=DocumentType.objects.all(),
+        source="document_type",
+        write_only=True
+    )
+
     class Meta:
         model = ReferencePerson
-        fields = "__all__"
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "document_type_id",  # Entrada
+            "document",          # Salida
+            "document_number",
+            "phone_number"
+        ]
+
+    def get_document(self, obj):
+        """Devuelve un objeto con tipo y número de documento (GET)"""
+        if obj.document_type:
+            return {
+                "id": str(obj.document_type.id),
+                "name": obj.document_type.name,
+                "number": obj.document_number
+            }
+        return None
+
+    def validate(self, data):
+        """Valida que no exista ya una referencia con mismo tipo y número"""
+        document_type = data.get("document_type")
+        document_number = data.get("document_number")
+
+        if self.instance:
+            # En PUT/PATCH: evitar conflicto consigo mismo
+            exists = ReferencePerson.objects.filter(
+                document_type=document_type,
+                document_number=document_number
+            ).exclude(id=self.instance.id)
+        else:
+            # En POST
+            exists = ReferencePerson.objects.filter(
+                document_type=document_type,
+                document_number=document_number
+            )
+
+        if exists.exists():
+            raise serializers.ValidationError({
+                "detail": "Ya existe una persona con este número y tipo de documento.",
+                "code": 110
+            })
+
+        return data
 
 ########################################################################################################
 ####                                                                                                ####
@@ -36,21 +89,29 @@ class CustomUserSerializer(serializers.ModelSerializer):
     date_joined = serializers.DateTimeField(read_only=True)
     role = serializers.CharField(read_only=True)
 
-    # GET: Devolverá objetos completos
     profile_photo = serializers.SerializerMethodField()
     document_type = serializers.SerializerMethodField()
     reference_1 = serializers.SerializerMethodField()
     reference_2 = serializers.SerializerMethodField()
 
-    # POST/PUT: Solo aceptará IDs
     document_type_id = serializers.PrimaryKeyRelatedField(
-        queryset=DocumentType.objects.all(), source="document_type", write_only=True
+        queryset=DocumentType.objects.all(), 
+        source="document_type", 
+        write_only=True
     )
     reference_1_id = serializers.PrimaryKeyRelatedField(
-        queryset=ReferencePerson.objects.all(), source="reference_1", write_only=True, required=False, allow_null=True
+        queryset=ReferencePerson.objects.all(), 
+        source="reference_1", 
+        write_only=True, 
+        required=False, 
+        allow_null=True
     )
     reference_2_id = serializers.PrimaryKeyRelatedField(
-        queryset=ReferencePerson.objects.all(), source="reference_2", write_only=True, required=False, allow_null=True
+        queryset=ReferencePerson.objects.all(), 
+        source="reference_2", 
+        write_only=True, 
+        required=False, 
+        allow_null=True
     )
 
     class Meta:
@@ -71,11 +132,13 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return obj.profile_photo.url if obj.profile_photo else None
     
     def create(self, validated_data):
-        """Asegura que la contraseña se almacene hasheada"""
         password = validated_data.pop("password", None)
+
+        validated_data["role"] = "tenant"
+
         user = CustomUser(**validated_data)
         if password:
-            user.set_password(password)  # 🔹 Aquí se hashea la contraseña correctamente
+            user.set_password(password)  
         user.save()
         return user
 
@@ -226,7 +289,6 @@ class ContractSerializer(serializers.ModelSerializer):
                 RentPaymentHistory.objects.create(
                     contract=contract,
                     month_paid=month_payment,
-                    payment_date=current_date,
                     status=payment_state
                 )
 
@@ -303,7 +365,6 @@ class RentPaymentSerializer(serializers.ModelSerializer):
         return obj.receipt_image.url if obj.receipt_image else None
 
     def create(self, validated_data):
-        validated_data["payment_date"] = datetime.today().date()
         validated_data["status"] = "pending_review"
         return super().create(validated_data)
     

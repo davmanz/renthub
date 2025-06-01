@@ -111,7 +111,7 @@ const ContractDetails = ({ contract, modalStates, setModalStates }: Props) => {
                 Mes a pagar: <strong>{DateUtil.getMonthAndYear(next.payment)}</strong>
               </Typography>
 
-              {next.status === "rejected" && next.voucher && next.admin_comment && (
+              {next.status === "overdue" && next.voucher && next.admin_comment && (
                 <>
                   <Chip label="Pago rechazado" color="error" sx={{ mb: 2 }} />
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "center" }}>
@@ -155,7 +155,7 @@ const ContractDetails = ({ contract, modalStates, setModalStates }: Props) => {
                 </>
               )}
 
-              {next.status === "overdue" && !next.voucher && (
+              {next.status === "overdue"  && !next.voucher && (
                 <Button
                   variant="contained"
                   color="error"

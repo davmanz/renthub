@@ -13,7 +13,7 @@ import ViewVoucherModal from "../../../../components/shared/ViewVoucherModal";
 interface Payment {
   id: string;
   month_paid: string;
-  payment_date: string;
+  payment_date: string | null;
   status: "approved" | "pending_review" | "overdue" | "upcoming";
   receipt_image_url: string | null;
   user_comment: string | null;
@@ -63,8 +63,9 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
     const valueB = String(b[sortConfig.key]);
     
     if (sortConfig.key === 'payment_date' || sortConfig.key === 'month_paid') {
-      const dateA = new Date(valueA);
-      const dateB = new Date(valueB);
+      // Si payment_date es null, lo tratamos como la fecha más antigua posible
+      const dateA = valueA ? new Date(valueA) : new Date(0);
+      const dateB = valueB ? new Date(valueB) : new Date(0);
       return sortConfig.direction === 'asc' 
         ? dateA.getTime() - dateB.getTime()
         : dateB.getTime() - dateA.getTime();
@@ -134,7 +135,7 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
                     <TableCell onClick={() => setSortConfig({ key: 'month_paid', direction: sortConfig?.direction === 'asc' ? 'desc' : 'asc' })} sx={{ cursor: "pointer" }}>
                       Mes Pagado
                     </TableCell>
-                    <TableCell>Fecha de Registro</TableCell>
+                    <TableCell>Carga de Voucher</TableCell>
                     <TableCell>Estado</TableCell>
                     <TableCell>Comprobante</TableCell>
                   </TableRow>
@@ -145,7 +146,10 @@ const ContractPaymentHistoryModal = ({ contractId, open, onClose }: Props) => {
                     return (
                       <TableRow key={p.id}>
                         <TableCell>{p.month_paid}</TableCell>
-                        <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                        <TableCell>{p.payment_date ? 
+        new Date(p.payment_date).toLocaleDateString() : 
+        "Sin Pago"
+    }</TableCell>
                         <TableCell>
                           <Chip label={label} color={color as any} />
                         </TableCell>

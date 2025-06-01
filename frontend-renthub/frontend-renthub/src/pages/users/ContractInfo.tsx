@@ -11,7 +11,13 @@ const ContractInfo = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedContract = contracts.find((c) => c.id === selectedId) || contracts[0];
 
-  const [modalStates, setModalStates] = useState({
+  interface ModalStates {
+    uploadPayment: boolean;
+    viewVoucher: boolean;
+    rejectReason: boolean;
+  }
+
+  const [modalStates, setModalStates] = useState<ModalStates>({
     uploadPayment: false,
     viewVoucher: false,
     rejectReason: false,
@@ -57,7 +63,7 @@ const ContractInfo = () => {
               open={modalStates.uploadPayment}
               onClose={() => {
                 setModalStates({ ...modalStates, uploadPayment: false });
-                refetchContracts(); // 🔁 Recarga contratos al cerrar modal
+                refetchContracts(); 
               }}
               nextPaymentMonth={selectedContract.next_month.payment}
               paymentId={selectedContract.next_month.id}
@@ -75,11 +81,10 @@ const ContractInfo = () => {
           {modalStates.rejectReason && selectedContract.next_month?.admin_comment && (
             <RejectReasonModal
               open={modalStates.rejectReason}
-              handleClose={() => setModalStates({ ...modalStates, rejectReason: false })}
-              booking={{
-                admin_comment: selectedContract.next_month.admin_comment,
-                voucher_image: selectedContract.next_month.voucher,
-              }}
+              onClose={() => setModalStates({ ...modalStates, rejectReason: false })}
+              adminComment = {selectedContract.next_month.admin_comment}
+              voucherImage = {selectedContract.next_month.voucher}
+           
             />
           )}
         </>

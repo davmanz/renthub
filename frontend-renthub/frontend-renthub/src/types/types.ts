@@ -41,6 +41,19 @@ export interface UserInterface {
   } | null;
 }
 
+export interface UserFormDataInterface {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  document_type_id: string;
+  document_number: string;
+  reference_1_id: string;
+  reference_2_id: string;
+  references_count: number;
+}
+
 
 // Definir interfaz para el formulario
 export interface FormDataUserInterface {
@@ -65,7 +78,11 @@ export interface Reference {
   id: string;
   first_name: string;
   last_name: string;
-}
+  document: {
+    id: string;
+    name: string;
+    number: string;
+}}
 
 export interface Props {
   open: boolean;
@@ -94,10 +111,8 @@ export interface LaundryBooking {
 
 ///////////////////////////////////////////
 
-export interface User {
-  id: number;
-  name: string;
-}
+// Interface para el formulario de usuario
+
 
 export interface Contract {
   building: string;
@@ -110,7 +125,7 @@ export interface Contract {
   deposit_amount: number;
   includes_wifi: boolean;
   wifi_cost: number;
-  user: User;
+  user: UserInterface;
   id: string;
   status: string;
   next_month?: {
@@ -125,7 +140,7 @@ export interface Contract {
 
 export interface Payment {
   id: string;
-  user: User;
+  user: UserInterface;
   contract?: Contract;
   month_paid?: string;
   status: string;

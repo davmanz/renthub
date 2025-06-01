@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
+import { AxiosError } from 'axios';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, MenuItem, Select, FormControl,
+  InputLabel, Tooltip,
 } from "@mui/material";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
@@ -32,7 +25,7 @@ interface ReferenceFormData {
   last_name: string;
   document_number: string;
   phone_number: string;
-  document_type: string;
+  document_type_id: string;
 }
 
 const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModalProps) => {
@@ -41,7 +34,7 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
     last_name: "",
     document_number: "",
     phone_number: "",
-    document_type: "",
+    document_type_id: "",
   });
 
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
@@ -54,7 +47,6 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
         setDocumentTypes(response.data);
       } catch (err) {
         toast.error("❌ Error al obtener los tipos de documento");
-        console.error("Error al obtener los tipos de documento", err);
       }
     };
 
@@ -68,7 +60,7 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
         last_name: "",
         document_number: "",
         phone_number: "",
-        document_type: "",
+        document_type_id: "",
       });
     }
   }, [open]);
@@ -84,9 +76,9 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
   };
 
   const validateForm = () => {
-    const { first_name, last_name, document_number, document_type, phone_number } = formData;
+    const { first_name, last_name, document_number, document_type_id, phone_number } = formData;
 
-    if (!first_name || !last_name || !document_number || !document_type) {
+    if (!first_name || !last_name || !document_number || !document_type_id) {
       toast.error("❌ Por favor complete todos los campos obligatorios.");
       return false;
     }
@@ -122,7 +114,7 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
           last_name: "",
           document_number: "",
           phone_number: "",
-          document_type: "",
+          document_type_id: "",
         });
 
         toast.success("✅ Referencia creada con éxito");
@@ -130,9 +122,20 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
       } else {
         toast.error("⚠️ Error inesperado del servidor.");
       }
-    } catch (err) {
-      toast.error("❌ Error al crear la referencia. Verifica los datos.");
-      console.error(err);
+    } catch (err: unknown) {
+      const error = err as AxiosError<{code?: string; detail?: string}>;
+      
+      if (error.response?.status === 400 && error.response.data) {
+        if (error.response.data.code == "110") {
+          toast.error("❌ Ya existe una referencia con este número y tipo de documento.");
+        } else {
+          // Mantener el manejo de otros errores de validación
+          const errors = error.response.data.detail;
+          toast.error(`❌ No se pudo crear la referencia:\n${errors}`);
+        }
+      } else {
+        toast.error("❌ Error inesperado al crear la referencia.");
+      }
     } finally {
       setLoading(false);
     }
@@ -150,9 +153,10 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
           onChange={handleChange}
           margin="dense"
           required
-          inputProps={{
+          slotProps={{
+            input: {
             "aria-label": "Nombre de la referencia",
-            "aria-required": "true",
+            "aria-required": "true",}
           }}
         />
 
@@ -164,9 +168,10 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
           onChange={handleChange}
           margin="dense"
           required
-          inputProps={{
-            "aria-label": "Apellido de la referencia",
-            "aria-required": "true",
+          slotProps={{
+            input: {
+            "aria-label": "Nombre de la referencia",
+            "aria-required": "true",}
           }}
         />
 
@@ -174,10 +179,12 @@ const AddReferenceModal = ({ open, onClose, onReferenceAdded }: AddReferenceModa
           <InputLabel id="doc-type-label">Tipo de Documento</InputLabel>
           <Select
             labelId="doc-type-label"
-            name="document_type"
-            value={formData.document_type}
+            name="document_type_id"
+            value={formData.document_type_id}
             onChange={handleChange}
-            inputProps={{ "aria-label": "Tipo de documento", "aria-required": "true" }}
+            inputProps={
+              { "aria-label": "Tipo de documento", "aria-required": "true" }
+            }
           >
             {documentTypes.map((doc) => (
               <MenuItem key={doc.id} value={doc.id}>

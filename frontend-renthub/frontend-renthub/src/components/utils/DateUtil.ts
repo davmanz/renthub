@@ -1,5 +1,3 @@
-// utils/FechaUtil.ts
-
 export class DateUtil {
     private static months: string[] = [
       "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
