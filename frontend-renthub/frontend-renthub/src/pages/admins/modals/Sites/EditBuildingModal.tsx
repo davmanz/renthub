@@ -62,7 +62,7 @@ const EditBuildingModal = ({ open, onClose, building, refreshBuildings }: EditBu
       if (editFields.name) updateData.name = name.trim();
       if (editFields.address) updateData.address = address.trim();
 
-      await api.put(endpoints.siteManagement.building + `/${building?.id}`, updateData);
+      await api.patch(endpoints.siteManagement.building + `${building?.id}/`, updateData);
       refreshBuildings();
       onClose();
     } catch (error) {

@@ -109,7 +109,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=100)
     phone_number = models.CharField(max_length=20, unique=True, null=False, blank=False)
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True)
-    document_number = models.CharField(max_length=50, unique=True, null=False, blank=False)
+    document_number = models.CharField(max_length=50, null=False, blank=False)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -163,6 +163,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['document_type', 'document_number'],
+                name='unique_document',
+                violation_error_message='custom user with this document already exists.'
+            )
+        ]
 
 ########################################################################################################
 ####                                                                                                ####

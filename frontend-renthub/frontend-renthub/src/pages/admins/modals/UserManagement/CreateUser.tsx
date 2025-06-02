@@ -57,7 +57,6 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
         setDocumentTypes(docTypes.data);
         setAvailableReferences(refs.data);
       } catch (err) {
-        console.error("Error al obtener datos iniciales:", err);
         setErrors(prev => ({
           ...prev,
           general: "Error al cargar los datos iniciales"
@@ -118,18 +117,54 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
         ...(formData.reference_1_id && { reference_1_id: formData.reference_1_id }),
         ...(formData.reference_2_id && { reference_2_id: formData.reference_2_id })
       };
-
       // Solo realizamos POST para crear nuevo usuario
       await api.post(endpoints.userManagement.user, submitData);
-      
+      setFormData(initialFormState); // Reiniciar formulario
+      setErrors({}); // Limpiar errores
+      setAvailableReferences([]); // Limpiar referencias disponible
       onUserSaved();
       onClose();
     } catch (err: any) {
-      console.error("Error al crear usuario:", err);
-      setErrors(prev => ({
-        ...prev,
-        general: err.response?.data?.message || "Error al crear el usuario"
-      }));
+      if (err.response?.status === 400) {
+        const errorData = err.response.data;
+        const newErrors: Record<string, string> = {};
+        
+        // Manejar el error específico de documento único
+        if (errorData.non_field_errors && 
+            errorData.non_field_errors[0].includes("document_type_id, document_number must make a unique set")) {
+          newErrors.document_number = "Esta combinación de tipo y número de documento ya existe";
+        } else {
+          // Manejar otros errores como antes
+          Object.keys(errorData).forEach(key => {
+            let errorMessage = '';
+            const rawError = Array.isArray(errorData[key]) ? errorData[key][0] : errorData[key];
+
+            // Mapeo de mensajes de error
+            if (rawError.includes('already exists')) {
+              switch(key) {
+                case 'email':
+                  errorMessage = 'Este correo electrónico ya está registrado en el sistema';
+                  break;
+                case 'phone_number':
+                  errorMessage = 'Este número de teléfono ya está registrado en el sistema';
+                  break;
+                default:
+                  errorMessage = 'Este valor ya existe en el sistema';
+              }
+            } else {
+              errorMessage = rawError; // Mantener el mensaje original para otros tipos de errores
+            }
+
+            newErrors[key] = errorMessage;
+          });
+        }
+
+        setErrors(newErrors);
+      } else {
+        setErrors({
+          general: "Error al crear el usuario. Por favor, intente nuevamente."
+        });
+      }
     } finally {
       setLoading(false);
     }
