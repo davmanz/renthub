@@ -21,14 +21,13 @@ interface ContractFormData {
   wifi_cost: string;
 }
 
-interface CreateContractProps {
+interface CreateContractModalProps {
   open: boolean;
   onClose: () => void;
   onContractSaved: () => void;
-  contractToEdit?: ContractFormData;
 }
 
-const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: CreateContractProps) => {
+const CreateContractModal = ({ open, onClose, onContractSaved }: CreateContractModalProps) => {
   const [formData, setFormData] = useState<ContractFormData>({
     user: "",
     room: "",
@@ -51,28 +50,22 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
   useEffect(() => {
     if (!open) return;
 
-    if (contractToEdit) {
-      setFormData(contractToEdit);
-      setSelectedUser(null);
-      setSelectedRoom(null);
-    } else {
-      setFormData({
-        user: "",
-        room: "",
-        start_date: "",
-        end_date: "",
-        rent_amount: "",
-        deposit_amount: "",
-        includes_wifi: "false",
-        wifi_cost: "",
-      });
-      setSelectedUser(null);
-      setSelectedRoom(null);
-    }
-
+    // Reset form when modal opens
+    setFormData({
+      user: "",
+      room: "",
+      start_date: "",
+      end_date: "",
+      rent_amount: "",
+      deposit_amount: "",
+      includes_wifi: "false",
+      wifi_cost: "",
+    });
+    setSelectedUser(null);
+    setSelectedRoom(null);
     setErrors({});
     setErrorMessage("");
-  }, [open, contractToEdit]);
+  }, [open]);
 
   const handleUserSelect = (user: any) => {
     setFormData(prev => ({ ...prev, user: user.id }));
@@ -104,53 +97,70 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
     setErrorMessage("");
 
     try {
-      if (contractToEdit) {
-        await api.put(endpoints.contractManagement.contracts, formData);
-        toast.success("Contrato actualizado con éxito");
-      } else {
-        await api.post(endpoints.contractManagement.contracts, formData);
-        toast.success("Contrato creado con éxito");
-      }
-
+      await api.post(endpoints.contractManagement.contracts, formData);
+      toast.success("Contrato creado con éxito");
       onContractSaved();
       onClose();
     } catch (err) {
-      console.error("Error al guardar contrato", err);
-      setErrorMessage("Error al guardar el contrato. Por favor, inténtelo de nuevo.");
+      console.error("Error al crear contrato", err);
+      setErrorMessage("Error al crear el contrato. Por favor, inténtelo de nuevo.");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth>
-      <DialogTitle>{contractToEdit ? "Editar Contrato" : "Crear Contrato"}</DialogTitle>
-      <DialogContent>
-        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+  const handleClose = () => {
+    // Check if there are unsaved changes
+    const hasChanges = Object.values(formData).some(value => value !== "" && value !== "false");
+    
+    if (hasChanges) {
+      if (window.confirm("Hay cambios sin guardar. ¿Desea cerrar de todos modos?")) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
 
-        <Button fullWidth variant="outlined" onClick={() => setUserModalOpen(true)}>
+  return (
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
+      <DialogTitle>Crear Contrato</DialogTitle>
+      <DialogContent>
+        {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
+
+        <Button 
+          fullWidth 
+          variant="outlined" 
+          onClick={() => setUserModalOpen(true)}
+          sx={{ mb: 1 }}
+        >
           Seleccionar Usuario
         </Button>
         <TextField
           fullWidth
           label="Usuario"
-          value={selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : formData.user}
+          value={selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : ""}
           disabled
           error={!!errors.user}
-          helperText={errors.user}
+          helperText={errors.user || "Seleccione un usuario"}
           margin="dense"
         />
 
-        <Button fullWidth variant="outlined" onClick={() => setRoomModalOpen(true)}>
+        <Button 
+          fullWidth 
+          variant="outlined" 
+          onClick={() => setRoomModalOpen(true)}
+          sx={{ mb: 1, mt: 2 }}
+        >
           Seleccionar Habitación
         </Button>
         <TextField
           fullWidth
           label="Habitación"
-          value={selectedRoom ? `${selectedRoom.building_name} - ${selectedRoom.room_number}` : formData.room}
+          value={selectedRoom ? `${selectedRoom.building_name} - ${selectedRoom.room_number}` : ""}
           disabled
           error={!!errors.room}
-          helperText={errors.room}
+          helperText={errors.room || "Seleccione una habitación"}
           margin="dense"
         />
 
@@ -164,13 +174,12 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
           margin="dense"
           error={!!errors.start_date}
           helperText={errors.start_date}
-          slotProps={
-            {
-              inputLabel: { shrink: true },
-              input: { placeholder: "aaaa-mm-dd" },
-            }
-          }
+          slotProps={{
+            inputLabel: { shrink: true },
+            input: { placeholder: "aaaa-mm-dd" },
+          }}
         />
+        
         <TextField
           fullWidth
           label="Fecha de Fin"
@@ -181,12 +190,10 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
           margin="dense"
           error={!!errors.end_date}
           helperText={errors.end_date}
-          slotProps={
-            {
-              inputLabel: { shrink: true },
-              input: { placeholder: "aaaa-mm-dd" },
-            }
-          }
+          slotProps={{
+            inputLabel: { shrink: true },
+            input: { placeholder: "aaaa-mm-dd" },
+          }}
         />
 
         <TextField
@@ -198,7 +205,9 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
           margin="dense"
           error={!!errors.rent_amount}
           helperText={errors.rent_amount}
+          type="number"
         />
+        
         <TextField
           fullWidth
           label="Depósito"
@@ -208,11 +217,17 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
           margin="dense"
           error={!!errors.deposit_amount}
           helperText={errors.deposit_amount}
+          type="number"
         />
 
         <FormControl fullWidth margin="dense">
           <InputLabel>Incluye WiFi</InputLabel>
-          <Select name="includes_wifi" value={formData.includes_wifi} onChange={handleChange}>
+          <Select 
+            name="includes_wifi" 
+            value={formData.includes_wifi} 
+            onChange={handleChange}
+            label="Incluye WiFi"
+          >
             <MenuItem value="true">Sí</MenuItem>
             <MenuItem value="false">No</MenuItem>
           </Select>
@@ -228,20 +243,36 @@ const CreateContract = ({ open, onClose, onContractSaved, contractToEdit }: Crea
           margin="dense"
           error={!!errors.wifi_cost}
           helperText={errors.wifi_cost}
+          type="number"
         />
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancelar</Button>
-        <Button onClick={handleSubmit} variant="contained" color="primary" disabled={loading}>
-          {loading ? <CircularProgress size={24} color="inherit" /> : contractToEdit ? "Actualizar" : "Crear"}
+        <Button onClick={handleClose} disabled={loading}>
+          Cancelar
+        </Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          color="primary" 
+          disabled={loading}
+        >
+          {loading ? <CircularProgress size={24} color="inherit" /> : "Crear Contrato"}
         </Button>
       </DialogActions>
 
-      <SelectUserModal open={userModalOpen} onClose={() => setUserModalOpen(false)} onSelect={handleUserSelect} />
-      <SelectRoomModal open={roomModalOpen} onClose={() => setRoomModalOpen(false)} onSelect={handleRoomSelect} />
+      <SelectUserModal 
+        open={userModalOpen} 
+        onClose={() => setUserModalOpen(false)} 
+        onSelect={handleUserSelect} 
+      />
+      <SelectRoomModal 
+        open={roomModalOpen} 
+        onClose={() => setRoomModalOpen(false)} 
+        onSelect={handleRoomSelect} 
+      />
     </Dialog>
   );
 };
 
-export default CreateContract;
+export default CreateContractModal;

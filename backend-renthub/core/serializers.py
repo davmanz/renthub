@@ -290,7 +290,8 @@ class ContractSerializer(serializers.ModelSerializer):
 ####                                                                                                ####
 ########################################################################################################
 class UserChangeRequestSerializer(serializers.ModelSerializer):
-    ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number"]
+    ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number", "document_type"]
+    user = serializers.SerializerMethodField()
 
     class Meta:
         model = UserChangeRequest
@@ -323,6 +324,11 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
         validated_data["user"] = self.context["request"].user
         return super().create(validated_data)
 
+    def get_user(self, obj):
+        return {
+            "id": str(obj.user.id),
+            "name": f"{obj.user.first_name} {obj.user.last_name}"
+        }
 
 ########################################################################################################
 ####                                                                                                ####

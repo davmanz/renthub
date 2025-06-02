@@ -6,12 +6,16 @@ import { useEffect, useState, useMemo } from "react";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import {STATUS_LABELS} from "../../constants/status";
+import { FIELD_LABELS } from "../../constants/fieldLabels";
 import AdminLayout from "./AdminLayout";
 
 // Primero, definimos las interfaces necesarias
 interface ChangeRequest {
-  id: string;  // Cambiado de string a number
-  user: string;
+  id: string;
+  user: {
+    id: string;
+    name: string;
+  };
   changes: Record<string, string>;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
@@ -46,7 +50,6 @@ const ChangeRequestsAdmin = () => {
       const res = await api.get(endpoints.changeRequests.list);
       setRequests(res.data);
     } catch (error) {
-      console.error('Error fetching requests:', error);
       setSnackbar({ 
         open: true, 
         message: "Error al cargar solicitudes: " + (error instanceof Error ? error.message : 'Error desconocido'), 
@@ -129,12 +132,14 @@ const ChangeRequestsAdmin = () => {
             </TableHead>
             <TableBody>
               {filtered.map((req: ChangeRequest) => (
-                <TableRow key={req.id}>
-                  <TableCell>{req.user}</TableCell>
+                <TableRow key={req.user.id}>
+                  <TableCell>{req.user.name}</TableCell>
                   <TableCell>
                     <ul>
                       {Object.entries(req.changes).map(([field, value]) => (
-                        <li key={field}><strong>{field}</strong>: {value}</li>
+                        <li key={field}>
+                          <strong>{FIELD_LABELS[field] || field}</strong>: {value}
+                        </li>
                       ))}
                     </ul>
                   </TableCell>

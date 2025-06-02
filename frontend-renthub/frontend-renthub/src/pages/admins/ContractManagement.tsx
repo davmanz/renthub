@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "./AdminLayout";
-import CreateContractModal from "./modals/ContractManagement/CreateContract";
+import CreateContractModal from "./modals/ContractManagement/CreateContractModal";
+import EditContractModal from "./modals/ContractManagement/EditContractModal";
 import {
   Container, Paper, Typography, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow,
@@ -9,15 +10,16 @@ import {
 import { Edit, Delete, LibraryAdd } from "@mui/icons-material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
-import {Contract} from "../../types/types"
+import { Contract } from "../../types/types";
 
 const ContractManagement = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedContract, setSelectedContract] = useState(null);
-  const [openModal, setOpenModal] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [openCreateModal, setOpenCreateModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
 
   useEffect(() => {
     fetchContracts();
@@ -34,15 +36,34 @@ const ContractManagement = () => {
     }
   };
 
-  const handleDelete = async (contractId = String) => {
+  const handleDelete = async (contractId: string) => {
     if (!window.confirm("¿Seguro que deseas eliminar este contrato?")) return;
-    await api.delete(`${endpoints.contractManagement.contracts}${contractId}/`);
-    fetchContracts();
+    try {
+      await api.delete(`${endpoints.contractManagement.contracts}${contractId}/`);
+      fetchContracts();
+    } catch (err) {
+      console.error("Error al eliminar contrato:", err);
+    }
   };
 
-  const handleEdit = (contract) => {
+  const handleEdit = (contract: Contract) => {
     setSelectedContract(contract);
-    setOpenModal(true);
+    setOpenEditModal(true);
+  };
+
+  const handleCreateNew = () => {
+    setSelectedContract(null);
+    setOpenCreateModal(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setOpenCreateModal(false);
+    setSelectedContract(null);
+  };
+
+  const handleCloseEditModal = () => {
+    setOpenEditModal(false);
+    setSelectedContract(null);
   };
 
   return (
@@ -56,7 +77,7 @@ const ContractManagement = () => {
           variant="contained"
           color="primary"
           startIcon={<LibraryAdd />}
-          onClick={() => { setSelectedContract(null); setOpenModal(true); }}
+          onClick={handleCreateNew}
           sx={{ mb: 2 }}
         >
           Agregar Contrato
@@ -114,7 +135,20 @@ const ContractManagement = () => {
         </TableContainer>
       </Container>
 
-      <CreateContractModal open={openModal} onClose={() => setOpenModal(false)} onContractSaved={fetchContracts} contractToEdit={selectedContract} />
+      {/* Modal de Creación */}
+      <CreateContractModal 
+        open={openCreateModal} 
+        onClose={handleCloseCreateModal} 
+        onContractSaved={fetchContracts} 
+      />
+
+      {/* Modal de Edición */}
+      <EditContractModal 
+        open={openEditModal} 
+        onClose={handleCloseEditModal} 
+        contract={selectedContract}
+        onContractUpdated={fetchContracts} 
+      />
     </AdminLayout>
   );
 };
