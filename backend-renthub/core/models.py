@@ -102,6 +102,12 @@ class DocumentType(models.Model):
 ####                                                                                                ####
 ########################################################################################################
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+
+    ROLE_CHOICES = [
+        ("superadmin", "Superadmin"),
+        ("admin", "Admin"),
+        ("tenant", "Tenant"),
+    ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, null=False, blank=False)
@@ -114,7 +120,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=100, editable=False, null=True, blank=True)
-    
     profile_photo = models.ImageField(
         upload_to=user_photo_upload_path,
         validators=[validate_image_file],
@@ -122,12 +127,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         null=True
     )
 
-    ROLE_CHOICES = [
-        ("superadmin", "Superadmin"),
-        ("admin", "Admin"),
-        ("tenant", "Tenant"),
-    ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="tenant")
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="tenant")
 
     # Referencias opcionales para todos los usuarios
     reference_1 = models.ForeignKey(

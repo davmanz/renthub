@@ -61,7 +61,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if user.is_admin() and request.data.get("role") in ["admin", "superadmin"]:
             return Response({"detail": "No puedes crear este tipo de usuario."}, status=status.HTTP_403_FORBIDDEN)
         
-    
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()

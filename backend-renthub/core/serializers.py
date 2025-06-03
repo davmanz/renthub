@@ -87,7 +87,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     is_verified = serializers.BooleanField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
-    role = serializers.CharField()
+    role = serializers.CharField(required=False, read_only=True)
     profile_photo = serializers.SerializerMethodField()
     document_type = serializers.SerializerMethodField()
     reference_1 = serializers.SerializerMethodField()
@@ -187,7 +187,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
             return value
         raise serializers.ValidationError("No tienes permiso para cambiar el rol.")
 
- 
 ########################################################################################################
 ####                                                                                                ####
 ####                    Serializador para el contrato de alquiler (Contract)                        ####
@@ -329,6 +328,28 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
             "id": str(obj.user.id),
             "name": f"{obj.user.first_name} {obj.user.last_name}"
         }
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        changes = rep.get("changes", {}).copy()
+
+        if "document_type" in changes:
+            try:
+                doc = DocumentType.objects.get(id=changes["document_type"])
+                changes["document_type"] = {
+                    "id": str(doc.id),
+                    "name": doc.name
+                }
+            except DocumentType.DoesNotExist:
+                # Opcional: manejar el error si el tipo fue eliminado
+                changes["document_type"] = {
+                    "id": changes["document_type"],
+                    "name": "Tipo eliminado"
+                }
+
+        rep["changes"] = changes
+        return rep
+
 
 ########################################################################################################
 ####                                                                                                ####

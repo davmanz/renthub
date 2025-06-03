@@ -10,13 +10,27 @@ import { FIELD_LABELS } from "../../constants/fieldLabels";
 import AdminLayout from "./AdminLayout";
 
 // Primero, definimos las interfaces necesarias
+interface DocumentType {
+  id: string;
+  name: string;
+}
+
+interface Changes {
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  email?: string;
+  document_type?: DocumentType;
+  document_number?: string;
+}
+
 interface ChangeRequest {
   id: string;
   user: {
     id: string;
     name: string;
   };
-  changes: Record<string, string>;
+  changes: Changes;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   reviewed_by: string | null;
@@ -138,7 +152,11 @@ const ChangeRequestsAdmin = () => {
                     <ul>
                       {Object.entries(req.changes).map(([field, value]) => (
                         <li key={field}>
-                          <strong>{FIELD_LABELS[field] || field}</strong>: {value}
+                          <strong>{FIELD_LABELS[field] || field}</strong>: {
+                            field === 'document_type' 
+                              ? (value as DocumentType).name 
+                              : value as string
+                          }
                         </li>
                       ))}
                     </ul>

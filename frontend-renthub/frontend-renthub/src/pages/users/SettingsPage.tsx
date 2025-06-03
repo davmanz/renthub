@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import {ChangeRequest , Changes} from "../../types/types"
+import {STATUS_LABELS} from "../../constants/status";
 
 const allowedFields = [
   { value: "first_name", label: "Nombre" },
@@ -17,8 +18,6 @@ const allowedFields = [
   { value: "document_type", label: "Tipo de documento" },
   { value: "document_number", label: "Número de documento" },
 ];
-
-
 
 const SettingsPage = () => {
   const [user, setUser] = useState<any>(null);
@@ -96,6 +95,14 @@ const SettingsPage = () => {
     }
   };
 
+  // Modificar la función isFieldPending
+  const isFieldPending = (fieldName: string) => {
+    return changeRequests.some(
+      (req) => fieldName in req.changes && req.status === "pending"
+    );
+  };
+
+  // Modificar el handleRequestSubmit
   const handleRequestSubmit = async () => {
     if (!newValue.trim()) {
       setRequestMessage("Debes ingresar un nuevo valor.");
@@ -104,16 +111,22 @@ const SettingsPage = () => {
 
     setSubmittingRequest(true);
     try {
-      // Crear el objeto changes usando la interfaz Changes
-      const requestChanges: { changes: Partial<Changes> } = {
-        changes: {
-          [fieldToChange as keyof Changes]: newValue
-        }
-      };
-
-      await api.post(endpoints.changeRequests.create, requestChanges);
+      let changes: Changes = {};
       
-      // Limpiar el formulario y actualizar la lista
+      if (fieldToChange === "document_type") {
+        const selectedType = documentTypes.find(type => type.id === newValue);
+        if (selectedType) {
+          changes.document_type = {
+            id: selectedType.id,
+            name: selectedType.name
+          };
+        }
+      } else {
+        changes[fieldToChange as keyof Changes] = newValue;
+      }
+
+      await api.post(endpoints.changeRequests.create, { changes });
+      
       setRequestMessage("Solicitud enviada para revisión.");
       setFieldToChange("");
       setCurrentValue("");
@@ -128,15 +141,6 @@ const SettingsPage = () => {
     } finally {
       setSubmittingRequest(false);
     }
-  };
-
-  // Agregar esta función auxiliar después de las declaraciones de estados
-  const isFieldPending = (fieldName: string) => {
-    return changeRequests.some(
-      (req) => 
-        Object.keys(req.changes)[0] === fieldName && 
-        (req.status === "pending")
-    );
   };
 
   return (
@@ -327,24 +331,26 @@ const SettingsPage = () => {
               bgcolor: "#2c2c2c",
             }}
           >
+            {Object.entries(req.changes).map(([field, value]) => (
+              <Typography key={field}>
+                <strong>{allowedFields.find(f => f.value === field)?.label || field}:</strong>{' '}
+                {field === 'document_type' 
+                  ? (value as DocumentType).name 
+                  : value}
+              </Typography>
+            ))}
             <Typography>
-              <strong>Campo:</strong> {
-              allowedFields.find(
-                field => field.value === Object.keys(req.changes)[0])?.label ||
-                Object.keys(req.changes)[0]}
+              <strong>Solicitante:</strong> {req.user.name}
             </Typography>
             <Typography>
-              <strong>Nuevo valor:</strong> {Object.values(req.changes)[0]}
-            </Typography>
-            <Typography>
-              <strong>Estado:</strong> {req.status}
+              <strong>Estado:</strong> {STATUS_LABELS[req.status]}
             </Typography>
             <Typography>
               <strong>Fecha:</strong> {new Date(req.created_at).toLocaleDateString()}
             </Typography>
             {req.review_comment && (
               <Typography>
-                <strong>Comentario:</strong> {req.review_comment}
+                <strong>Comentario de revisión:</strong> {req.review_comment}
               </Typography>
             )}
           </Box>

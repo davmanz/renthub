@@ -68,11 +68,35 @@ export interface FormDataUserInterface {
 
 
 
-export interface DocumentType {
+interface DocumentType {
+  id: string | number;
+  name: string;
+}
+
+export interface UserInfo {
   id: string;
   name: string;
 }
 
+export interface Changes {
+  document_type?: DocumentType;
+  [key: string]: any;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  document_number?: string;
+  phone_number?: string;
+}
+
+export interface ChangeRequest {
+  id: string;
+  user: UserInfo;
+  changes: Changes;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  reviewed_by: string | null;
+  review_comment: string | null;
+}
 
 export interface Reference {
   id: string;
@@ -196,30 +220,4 @@ export interface CreateContractProps {
 
 export interface FormErrors {
   [key: string]: string;
-}
-
-export interface ChangeRequest {
-  id: number;
-  user: string;
-  changes: {
-    first_name?: string;
-    last_name?: string;
-    document_type?: string;
-    document_number?: string;
-    email?: string;
-    phone_number?: string;
-  };
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  reviewed_by: string | null;
-  review_comment: string | null;
-}
-
-export interface Changes {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  phone_number?: string;
-  document_type?: number;
-  document_number?: string;
 }
