@@ -356,15 +356,33 @@ class UserChangeRequestViewSet(viewsets.ModelViewSet):
         if change_request.status != "pending":
             return Response({"detail": "Esta solicitud ya fue procesada."}, status=status.HTTP_400_BAD_REQUEST)
 
-        for field, new_value in change_request.changes.items():
-            setattr(change_request.user, field, new_value)
-        change_request.user.save()
+        try:
+            for field, new_value in change_request.changes.items():
+                # Manejo especial para document_type
+                if field == "document_type":
+                    if isinstance(new_value, dict):
+                        new_value = new_value.get("id")
+                    # Buscar la instancia del DocumentType
+                    new_value = DocumentType.objects.get(id=new_value)
+                setattr(change_request.user, field, new_value)
+            
+            change_request.user.save()
+            change_request.status = "approved"
+            change_request.reviewed_by = user
+            change_request.save()
 
-        change_request.status = "approved"
-        change_request.reviewed_by = user
-        change_request.save()
-
-        return Response({"detail": "Solicitud aprobada y cambios aplicados."}, status=status.HTTP_200_OK)
+            return Response({"detail": "Solicitud aprobada y cambios aplicados."}, status=status.HTTP_200_OK)
+        
+        except DocumentType.DoesNotExist:
+            return Response(
+                {"detail": "El tipo de documento especificado no existe."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Error al aplicar los cambios: {str(e)}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
     @action(detail=True, methods=["patch"])
     def reject(self, request, pk=None):

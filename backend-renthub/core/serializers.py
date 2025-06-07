@@ -87,7 +87,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     is_verified = serializers.BooleanField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
-    role = serializers.CharField(required=False, read_only=True)
+    role = serializers.CharField(required=False)
     profile_photo = serializers.SerializerMethodField()
     document_type = serializers.SerializerMethodField()
     reference_1 = serializers.SerializerMethodField()
@@ -334,16 +334,22 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
         changes = rep.get("changes", {}).copy()
 
         if "document_type" in changes:
+            # Si document_type es un diccionario, usar el id directamente
+            if isinstance(changes["document_type"], dict):
+                doc_id = changes["document_type"]["id"]
+            else:
+                doc_id = changes["document_type"]
+                
             try:
-                doc = DocumentType.objects.get(id=changes["document_type"])
+                doc = DocumentType.objects.get(id=doc_id)
                 changes["document_type"] = {
                     "id": str(doc.id),
                     "name": doc.name
                 }
-            except DocumentType.DoesNotExist:
-                # Opcional: manejar el error si el tipo fue eliminado
+            except (DocumentType.DoesNotExist, ValueError):
+                # Si el documento no existe o hay error al convertir el ID
                 changes["document_type"] = {
-                    "id": changes["document_type"],
+                    "id": doc_id,
                     "name": "Tipo eliminado"
                 }
 
@@ -395,7 +401,7 @@ class RentPaymentSerializer(serializers.ModelSerializer):
 ####                                                                                                ####
 ########################################################################################################
 class RoomSerializer(serializers.ModelSerializer):
-    building_name = serializers.CharField(source="building.name")
+    building_name = serializers.CharField(source="building.name",read_only=True)
 
     class Meta:
         model = Room
