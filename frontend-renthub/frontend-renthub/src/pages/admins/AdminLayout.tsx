@@ -10,23 +10,22 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
+import { UserInterface } from "../../types/types";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
-
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
-  const [userName, setUserName] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState("");
+  const [user, setUser] = useState<UserInterface | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const response = await api.get(endpoints.auth.me);
-        setUserName(`${response.data.first_name} ${response.data.last_name}`);
-        setProfilePhoto(response.data.profile_photo);
+        setUser(response.data);
       } catch (error) {
         navigate("/login");
       }
@@ -53,8 +52,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       >
         <Box sx={{ p: 3, textAlign: "center" }}>
           <Avatar
-            src={profilePhoto || ""}
-            alt="Avatar"
+            src={user?.profile_photo ? `${API_BASE_URL}${user.profile_photo}` : ""}
+            alt={user?.first_name || "Avatar"}
             sx={{
               width: 90,
               height: 90,
@@ -64,7 +63,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
             }}
           />
           <Typography variant="h6" sx={{ mt: 2, fontWeight: "bold" }}>
-            {userName || "Administrador"}
+            {user?.first_name} {user?.last_name}
           </Typography>
         </Box>
 

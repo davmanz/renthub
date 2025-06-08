@@ -9,6 +9,11 @@ import endpoints from "../../../../api/endpoints";
 import SelectUserModal from "./SelectUserModal";
 import SelectRoomModal from "./SelectRoomModal";
 import { validateContractForm } from "../../../../components/utils/ContractValidation";
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 
 interface ContractFormData {
   user: string;
@@ -164,37 +169,45 @@ const CreateContractModal = ({ open, onClose, onContractSaved }: CreateContractM
           margin="dense"
         />
 
-        <TextField
-          fullWidth
-          label="Fecha de Inicio"
-          type="date"
-          name="start_date"
-          value={formData.start_date}
-          onChange={handleChange}
-          margin="dense"
-          error={!!errors.start_date}
-          helperText={errors.start_date}
-          slotProps={{
-            inputLabel: { shrink: true },
-            input: { placeholder: "aaaa-mm-dd" },
-          }}
-        />
-        
-        <TextField
-          fullWidth
-          label="Fecha de Fin"
-          type="date"
-          name="end_date"
-          value={formData.end_date}
-          onChange={handleChange}
-          margin="dense"
-          error={!!errors.end_date}
-          helperText={errors.end_date}
-          slotProps={{
-            inputLabel: { shrink: true },
-            input: { placeholder: "aaaa-mm-dd" },
-          }}
-        />
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+          <DatePicker
+            label="Fecha de Inicio"
+            value={formData.start_date ? dayjs(formData.start_date) : null}
+            onChange={(newValue) => {
+              setFormData(prev => ({
+                ...prev,
+                start_date: newValue ? newValue.format('YYYY-MM-DD') : ''
+              }));
+            }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                margin: "dense",
+                error: !!errors.start_date,
+                helperText: errors.start_date || "Fecha de inicio del contrato"
+              }
+            }}
+          />
+
+          <DatePicker
+            label="Fecha de Fin"
+            value={formData.end_date ? dayjs(formData.end_date) : null}
+            onChange={(newValue) => {
+              setFormData(prev => ({
+                ...prev,
+                end_date: newValue ? newValue.format('YYYY-MM-DD') : ''
+              }));
+            }}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                margin: "dense",
+                error: !!errors.end_date,
+                helperText: errors.end_date || "Fecha de finalización del contrato"
+              }
+            }}
+          />
+        </LocalizationProvider>
 
         <TextField
           fullWidth

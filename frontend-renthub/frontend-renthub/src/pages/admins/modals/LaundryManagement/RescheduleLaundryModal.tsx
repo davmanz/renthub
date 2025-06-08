@@ -6,16 +6,36 @@ import {
 } from "@mui/material";
 import api from "../../../../api/api";
 import endpoints from "../../../../api/endpoints";
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es'; // Para tener el calendario en español
+
+interface ApiError extends Error {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+interface Booking {
+  id: string;
+  proposed_date?: string; // formato: YYYY-MM-DD
+  proposed_time_slot?: string; // formato: HH:00-HH:00
+}
 
 interface RescheduleModalProps {
   open: boolean;
-  booking: {
-    id: string;
-    proposed_date?: string;
-    proposed_time_slot?: string;
-  };
-  fetchBookings: () => void;
+  booking: Booking;
+  fetchBookings: () => Promise<void>;
   handleClose: () => void;
+}
+
+interface FormState {
+  date: string;
+  timeSlot: string;
 }
 
 const TIME_SLOTS = [...Array(24)].map((_, i) => {
@@ -24,11 +44,12 @@ const TIME_SLOTS = [...Array(24)].map((_, i) => {
   return { value: `${hour}-${nextHour}`, label: `${hour} - ${nextHour}` };
 });
 
-const isDateValid = (date: string) => {
+const isDateValid = (date: string): boolean => {
+  if (!date) return false;
   const selectedDate = new Date(date);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return selectedDate >= today;
+  return !isNaN(selectedDate.getTime()) && selectedDate >= today;
 };
 
 const RescheduleModal = ({
@@ -37,49 +58,63 @@ const RescheduleModal = ({
   fetchBookings,
   handleClose,
 }: RescheduleModalProps) => {
-  const [rescheduleDate, setRescheduleDate] = useState("");
-  const [rescheduleTimeSlot, setRescheduleTimeSlot] = useState("");
+  const [formState, setFormState] = useState<FormState>({
+    date: "",
+    timeSlot: ""
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     if (booking) {
-      setRescheduleDate(booking.proposed_date || "");
-      setRescheduleTimeSlot(booking.proposed_time_slot || "");
+      setFormState({
+        date: booking.proposed_date || "",
+        timeSlot: booking.proposed_time_slot || ""
+      });
       setError("");
     }
   }, [booking]);
 
   useEffect(() => {
     if (!open) {
-        setRescheduleDate("");
-        setRescheduleTimeSlot("");
-        setError("");
-        setSuccessMessage("");
-        setLoading(false);
+      setFormState({ date: "", timeSlot: "" });
+      setError("");
+      setSuccessMessage("");
+      setLoading(false);
     }
-}, [open]);
+  }, [open]);
+
+  const handleTimeSlotChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState(prev => ({ ...prev, timeSlot: event.target.value }));
+  };
+
+  const validateForm = (): boolean => {
+    if (!booking || !formState.date.trim() || !formState.timeSlot.trim()) {
+      setError("Por favor completa todos los campos.");
+      return false;
+    }
+
+    if (!isDateValid(formState.date)) {
+      setError("La fecha debe ser igual o posterior a hoy.");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleReschedule = async () => {
-    if (!booking || !rescheduleDate.trim() || !rescheduleTimeSlot.trim()) {
-      setError("Por favor completa todos los campos.");
-      return;
-    }
-
-    if (!isDateValid(rescheduleDate)) {
-      setError("La fecha debe ser igual o posterior a hoy.");
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
       setError("");
+      
       const response = await api.post(
         endpoints.laundryManagement.propose(booking.id),
         {
-          proposed_date: rescheduleDate,
-          proposed_time_slot: rescheduleTimeSlot,
+          proposed_date: formState.date,
+          proposed_time_slot: formState.timeSlot,
         }
       );
 
@@ -89,14 +124,15 @@ const RescheduleModal = ({
         setTimeout(() => {
           handleClose();
           setSuccessMessage("");
-        }, 1500);
+        }, 2500);
       } else {
-        setError("No se pudo completar la reprogramación. Por favor, intente nuevamente.");
+        throw new Error("Error en la respuesta del servidor");
       }
-    } catch (error: Error | any) {
+    } catch (error: unknown) {
       console.error('Error en reprogramación:', error);
+      const apiError = error as ApiError;
       setError(
-        error.response?.data?.message || 
+        apiError.response?.data?.message || 
         "Error al reprogramar la reserva. Por favor, intente nuevamente."
       );
     } finally {
@@ -129,38 +165,44 @@ const RescheduleModal = ({
           </Alert>
         )}
 
-        <Box sx={{ mt: 2 }}>
-          <TextField
-            fullWidth
-            label="Nueva Fecha"
-            type="date"
-            value={rescheduleDate}
-            onChange={(e) => setRescheduleDate(e.target.value)}
-            error={!!rescheduleDate && !isDateValid(rescheduleDate)}
-            helperText={
-              !!rescheduleDate && !isDateValid(rescheduleDate)
-                ? "La fecha debe ser igual o posterior a hoy"
-                : "Seleccione una fecha para la reprogramación"
-            }
-            slotProps={{
-              input: {
-                min: new Date().toISOString().split("T")[0]
-              }
-            }}
-            sx={{ mb: 2 }}
-          />
+        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+            <DatePicker
+              label="Nueva Fecha"
+              value={formState.date ? dayjs(formState.date) : null}
+              onChange={(newValue) => {
+                setFormState(prev => ({
+                  ...prev,
+                  date: newValue ? newValue.format('YYYY-MM-DD') : ''
+                }));
+              }}
+              minDate={dayjs()} // Evita seleccionar fechas pasadas
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  error: !!formState.date && !isDateValid(formState.date),
+                  helperText: "Seleccione una fecha para la reprogramación"
+                }
+              }}
+              sx={{
+                '& .MuiInputBase-root': {
+                  backgroundColor: 'background.paper',
+                }
+              }}
+            />
+          </LocalizationProvider>
 
           <TextField
             fullWidth
             select
             label="Nuevo Horario"
-            value={rescheduleTimeSlot}
-            onChange={(e) => setRescheduleTimeSlot(e.target.value)}
+            value={formState.timeSlot}
+            onChange={handleTimeSlotChange}
             helperText="Seleccione un horario disponible"
-            error={!rescheduleTimeSlot}
+            error={!formState.timeSlot}
           >
-            {TIME_SLOTS.map((slot, idx) => (
-              <MenuItem key={idx} value={slot.value}>
+            {TIME_SLOTS.map((slot) => (
+              <MenuItem key={slot.value} value={slot.value}>
                 {slot.label}
               </MenuItem>
             ))}
@@ -180,7 +222,7 @@ const RescheduleModal = ({
           onClick={handleReschedule}
           color="warning"
           variant="contained"
-          disabled={loading || !isDateValid(rescheduleDate) || !rescheduleTimeSlot}
+          disabled={loading || !isDateValid(formState.date) || !formState.timeSlot}
         >
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center' }}>

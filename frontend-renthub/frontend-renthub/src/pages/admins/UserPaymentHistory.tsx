@@ -9,16 +9,10 @@ import api from "../../api/api";
 import endpoints from "../../api/endpoints";
 import ContractSelector from "./modals/UserPaymentHistory/ContractSelectorModal";
 import AdminLayout from "./AdminLayout";
-
-interface User {
-  id: string;
-  first_name: string;
-  last_name: string;
-  document_number: string;
-}
+import {UserInterface}from "../../types/types";
 
 const UserPaymentHistory = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserInterface[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -36,7 +30,6 @@ const UserPaymentHistory = () => {
       const response = await api.get(endpoints.userManagement.user);
       setUsers(response.data);
     } catch (err) {
-      console.error("Error al cargar usuarios", err);
       setError("Error al cargar los usuarios. Por favor, intente nuevamente.");
     } finally {
       setLoading(false);
@@ -99,12 +92,14 @@ const UserPaymentHistory = () => {
             margin="normal"
             variant="outlined"
             onChange={(e) => debouncedSearch(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }
             }}
             sx={{
               mb: 3,
@@ -133,7 +128,7 @@ const UserPaymentHistory = () => {
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
                     <ListItem
-                      button
+                      component="div"
                       key={user.id}
                       onClick={() => setSelectedUserId(user.id)}
                       onMouseEnter={() => setHoveredUserId(user.id)}
@@ -141,6 +136,7 @@ const UserPaymentHistory = () => {
                       sx={{
                         borderBottom: "1px solid #e0e0e0",
                         transition: "all 0.2s ease",
+                        cursor: 'pointer', // Añadimos cursor pointer para indicar que es clickeable
                         '&:hover': {
                           backgroundColor: "rgba(25, 118, 210, 0.08)",
                           transform: "translateX(6px)",
@@ -158,7 +154,7 @@ const UserPaymentHistory = () => {
                         }
                         secondary={
                           <Typography variant="body2" color="text.secondary">
-                            DNI: {user.document_number}
+                            {user.document_type.name}: {user.document_number}
                           </Typography>
                         }
                       />

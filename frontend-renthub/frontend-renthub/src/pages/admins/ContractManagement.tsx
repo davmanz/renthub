@@ -5,7 +5,8 @@ import EditContractModal from "./modals/ContractManagement/EditContractModal";
 import {
   Container, Paper, Typography, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow,
-  Button, TextField, IconButton, Chip,
+  Button, TextField, IconButton, Chip, Dialog,
+  DialogTitle, DialogContent, DialogContentText, DialogActions
 } from "@mui/material";
 import { Edit, Delete, LibraryAdd } from "@mui/icons-material";
 import api from "../../api/api";
@@ -20,6 +21,8 @@ const ContractManagement = () => {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchContracts();
@@ -36,13 +39,22 @@ const ContractManagement = () => {
     }
   };
 
-  const handleDelete = async (contractId: string) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este contrato?")) return;
+  const handleDeleteClick = (contractId: string) => {
+    setContractToDelete(contractId);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!contractToDelete) return;
+    
     try {
-      await api.delete(`${endpoints.contractManagement.contracts}${contractId}/`);
+      await api.delete(`${endpoints.contractManagement.contracts}${contractToDelete}/`);
       fetchContracts();
     } catch (err) {
       console.error("Error al eliminar contrato:", err);
+    } finally {
+      setOpenDeleteDialog(false);
+      setContractToDelete(null);
     }
   };
 
@@ -124,7 +136,7 @@ const ContractManagement = () => {
                       <IconButton color="primary" onClick={() => handleEdit(contract)}>
                         <Edit />
                       </IconButton>
-                      <IconButton color="error" onClick={() => handleDelete(contract.id)}>
+                      <IconButton color="error" onClick={() => handleDeleteClick(contract.id)}>
                         <Delete />
                       </IconButton>
                     </TableCell>
@@ -149,6 +161,34 @@ const ContractManagement = () => {
         contract={selectedContract}
         onContractUpdated={fetchContracts} 
       />
+
+      {/* Dialog de Confirmación de Eliminación */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+      >
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            ¿Estás seguro que deseas eliminar este contrato? Esta acción no se puede deshacer.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setOpenDeleteDialog(false)} 
+            color="primary"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleConfirmDelete} 
+            color="error" 
+            variant="contained"
+          >
+            Eliminar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AdminLayout>
   );
 };

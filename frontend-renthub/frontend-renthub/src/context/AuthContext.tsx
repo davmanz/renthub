@@ -4,14 +4,21 @@ import endpoints from "../api/endpoints";
 
 interface AuthContextType {
   user: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ access: string; refresh: string; user: any }>; 
   logout: () => void;
+  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, login: async () => false, logout: () => {} });
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  login: async () => ({ access: '', refresh: '', user: null }), 
+  logout: () => {},
+  isLoading: false
+});
 
 const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<string | null>(localStorage.getItem("user") || null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const refreshToken = async () => {
     try {
@@ -38,7 +45,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
       } catch (error) {
         const refreshed = await refreshToken();
-        if (!refreshed) window.location.href = "/login"; // Redirección segura
+        if (!refreshed) window.location.href = "/login";
       }
     };
 
@@ -46,17 +53,33 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setIsLoading(true);
     try {
-      const response = await api.post(endpoints.auth.login, { email, password });
-
-      localStorage.setItem("access", response.data.access);
-      localStorage.setItem("refresh", response.data.refresh);
+      // Hacer login y obtener datos del usuario en una sola operación
+      const loginResponse = await api.post(endpoints.auth.login, { email, password });
+      
+      // Guardar tokens
+      localStorage.setItem("access", loginResponse.data.access);
+      localStorage.setItem("refresh", loginResponse.data.refresh);
       localStorage.setItem("user", email);
 
+      // Obtener datos del usuario
+      const userResponse = await api.get(endpoints.auth.me, {
+        headers: { Authorization: `Bearer ${loginResponse.data.access}` }
+      });
+
       setUser(email);
-      return true;
+      
+      return {
+        access: loginResponse.data.access,
+        refresh: loginResponse.data.refresh,
+        user: userResponse.data
+      };
     } catch (error) {
-      return false;
+      // Propagar el error para que Login.tsx pueda manejarlo
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -65,10 +88,14 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("refresh");
     localStorage.removeItem("user");
     setUser(null);
-    window.location.href = "/login"; // Redirección manual sin useNavigate()
+    window.location.href = "/login";
   };
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export { AuthContext, AuthProvider };

@@ -123,6 +123,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     profile_photo = models.ImageField(
         upload_to=user_photo_upload_path,
         validators=[validate_image_file],
+        default='users/photos/adminDefault.jpg',
         blank=True,
         null=True
     )

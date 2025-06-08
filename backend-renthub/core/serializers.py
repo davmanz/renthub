@@ -1,22 +1,23 @@
-from rest_framework import serializers
-from django.db import transaction
+from dateutil.relativedelta import relativedelta
 from datetime import datetime
-from rest_framework.exceptions import ValidationError as DRFValidationError
+
+from axes.handlers.proxy import AxesProxyHandler
+
+from django.db import transaction
+from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from core.models import (CustomUser, UserChangeRequest,
-                         Contract, 
-                         RentPaymentHistory,
-                         Room, Building,
-                         ReferencePerson,
+                         Contract, RentPaymentHistory,
+                         Room, Building, ReferencePerson,
                          LaundryBooking, DocumentType
                          )
-from dateutil.relativedelta import relativedelta
-from core.models import Contract, RentPaymentHistory, Room, Building, ReferencePerson, DocumentType
 
 ########################################################################################################
-####                                                                                                ####
 ####               Serializador para la persona de referencia (ReferencePerson)                     ####
-####                                                                                                ####
 ########################################################################################################
 class ReferencePersonSerializer(serializers.ModelSerializer):
     document = serializers.SerializerMethodField()
@@ -77,9 +78,7 @@ class ReferencePersonSerializer(serializers.ModelSerializer):
         return data
 
 ########################################################################################################
-####                                                                                                ####
 ####                    Serializador para el usuario (CustomUser)                                   ####
-####                                                                                                ####
 ########################################################################################################
 class CustomUserSerializer(serializers.ModelSerializer):
 
@@ -188,9 +187,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         raise serializers.ValidationError("No tienes permiso para cambiar el rol.")
 
 ########################################################################################################
-####                                                                                                ####
 ####                    Serializador para el contrato de alquiler (Contract)                        ####
-####                                                                                                ####
 ########################################################################################################
 class ContractSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
@@ -284,12 +281,10 @@ class ContractSerializer(serializers.ModelSerializer):
         return contract
 
 ########################################################################################################
-####                                                                                                ####
 ####        Serializador para la solicitud de cambio de datos del usuario (UserChangeRequest)       ####
-####                                                                                                ####
 ########################################################################################################
 class UserChangeRequestSerializer(serializers.ModelSerializer):
-    ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number", "document_type"]
+    ALLOWED_FIELDS = ["first_name", "last_name", "email", "document_number", "document_type", "phone_number", "profile_photo"]
     user = serializers.SerializerMethodField()
 
     class Meta:
@@ -358,9 +353,7 @@ class UserChangeRequestSerializer(serializers.ModelSerializer):
 
 
 ########################################################################################################
-####                                                                                                ####
 ####           Serializador para el historial de pagos de alquiler (RentPaymentHistory)             ####
-####                                                                                                ####
 ########################################################################################################
 class RentPaymentSerializer(serializers.ModelSerializer):
     contract = serializers.SerializerMethodField()
@@ -396,9 +389,7 @@ class RentPaymentSerializer(serializers.ModelSerializer):
         }
 
 ########################################################################################################
-####                                                                                                ####
 ####                            Serializador para la habitación (Room)                              ####
-####                                                                                                ####
 ########################################################################################################
 class RoomSerializer(serializers.ModelSerializer):
     building_name = serializers.CharField(source="building.name",read_only=True)
@@ -418,9 +409,7 @@ class RoomSerializer(serializers.ModelSerializer):
         return data
 
 ########################################################################################################
-####                                                                                                ####
 ####                          Serializador para el edificio (Building)                              ####
-####                                                                                                ####
 ########################################################################################################
 class BuildingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -428,9 +417,7 @@ class BuildingSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 ########################################################################################################
-####                                                                                                ####
 ####           Serializador para la reserva de lavandería (LaundryBooking)                          ####
-####                                                                                                ####
 ########################################################################################################
 class LaundryBookingSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
@@ -476,9 +463,7 @@ class LaundryBookingSerializer(serializers.ModelSerializer):
         return None
 
 ########################################################################################################
-####                                                                                                ####
 ####                    Serializador para el tipo de documento (DocumentType)                       ####
-####                                                                                                ####
 ########################################################################################################
 class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:

@@ -117,11 +117,10 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
         ...(formData.reference_1_id && { reference_1_id: formData.reference_1_id }),
         ...(formData.reference_2_id && { reference_2_id: formData.reference_2_id })
       };
-      // Solo realizamos POST para crear nuevo usuario
       await api.post(endpoints.userManagement.user, submitData);
-      setFormData(initialFormState); // Reiniciar formulario
-      setErrors({}); // Limpiar errores
-      setAvailableReferences([]); // Limpiar referencias disponible
+      setFormData(initialFormState);
+      setErrors({});
+      setAvailableReferences([]);
       onUserSaved();
       onClose();
     } catch (err: any) {
@@ -160,6 +159,16 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
         }
 
         setErrors(newErrors);
+      } else if (err.response?.status === 503 && err.response?.data?.code === 'gmail_token_error') {
+        setErrors({
+          general: "El usuario se creó, pero no se pudo enviar el correo de verificación debido a un problema con el servicio de correo. Por favor, contacte al administrador del sistema."
+        });
+        // Aquí podrías decidir si quieres cerrar el modal o no
+        // Ya que el usuario sí se creó, pero falló el envío del correo
+        setTimeout(() => {
+          onUserSaved();
+          onClose();
+        }, 5000); // Dar tiempo para que el usuario lea el mensaje
       } else {
         setErrors({
           general: "Error al crear el usuario. Por favor, intente nuevamente."
@@ -192,10 +201,25 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
     return ref ? `${ref.first_name} ${ref.last_name}` : "Referencia no encontrada";
   }, [availableReferences]);
 
+  // Agregar esta nueva función
+  const resetForm = useCallback(() => {
+    setFormData(initialFormState);
+    setErrors({});
+    setAvailableReferences([]);
+    setSelectedReferenceField(null);
+    setOpenReferenceModal(false);
+  }, []);
+
+  // Modificar el handler del cierre
+  const handleClose = useCallback(() => {
+    resetForm();
+    onClose();
+  }, [onClose, resetForm]);
+
   return (
     <Dialog 
       open={open} 
-      onClose={onClose} 
+      onClose={handleClose} // Cambiar onClose por handleClose
       fullWidth 
       aria-labelledby="user-dialog-title"
     >
@@ -369,7 +393,7 @@ const CreateUser = ({ open, onClose, onUserSaved }: Props) => {
 
       <DialogActions>
         <Button 
-          onClick={onClose} 
+          onClick={handleClose} // Cambiar onClose por handleClose
           disabled={loading}
           aria-label="Cancelar"
         >

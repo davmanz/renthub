@@ -5,6 +5,11 @@ import {
 } from "@mui/material";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 
 interface RescheduleModalProps {
   open: boolean;
@@ -89,26 +94,31 @@ const RescheduleModal = ({
           </Alert>
         )}
 
-        <TextField
-          fullWidth
-          label="Nueva Fecha"
-          type="date"
-          sx={{ mt: 2 }}
-          value={rescheduleDate}
-          onChange={(e) => setRescheduleDate(e.target.value)}
-          error={!!rescheduleDate && !isDateValid(rescheduleDate)}
-          helperText={
-            !!rescheduleDate && !isDateValid(rescheduleDate)
-              ? "La fecha debe ser igual o posterior a hoy"
-              : ""
-          }
-          slotProps={
-            {
-              inputLabel: { shrink: true },
-              input: { placeholder: "aaaa-mm-dd" },
-            }
-          }
-        />
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+          <DatePicker
+            label="Nueva Fecha"
+            value={rescheduleDate ? dayjs(rescheduleDate) : null}
+            onChange={(newValue) => {
+              setRescheduleDate(newValue ? newValue.format('YYYY-MM-DD') : '');
+            }}
+            minDate={dayjs()}
+            slotProps={{
+              textField: {
+                fullWidth: true,
+                error: !!rescheduleDate && !isDateValid(rescheduleDate),
+                helperText: !!rescheduleDate && !isDateValid(rescheduleDate)
+                  ? "La fecha debe ser igual o posterior a hoy"
+                  : "Seleccione una fecha para la reprogramación"
+              }
+            }}
+            sx={{
+              mt: 2,
+              '& .MuiInputBase-root': {
+                backgroundColor: 'background.paper',
+              }
+            }}
+          />
+        </LocalizationProvider>
 
         <TextField
           fullWidth

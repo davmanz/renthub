@@ -9,6 +9,11 @@ from googleapiclient.errors import HttpError
 
 TOKEN_PATH = os.path.join(os.path.dirname(__file__), "token.json")
 
+class GmailTokenExpiredError(Exception):
+    """Se lanza cuando el token de Gmail ha expirado y no se puede usar."""
+    pass
+
+
 def get_gmail_credentials():
     """Carga las credenciales desde un archivo token.json local"""
     with open(TOKEN_PATH, "r") as token_file:
@@ -17,21 +22,15 @@ def get_gmail_credentials():
 
 
 def send_gmail_api_email(to_email, subject, message_text):
-    """
-    Envía un correo utilizando la API de Gmail desde token.json.
-    
-    Parámetros:
-    - to_email: dirección del destinatario
-    - subject: asunto del mensaje
-    - message_text: cuerpo del correo
-    """
+    from .gmail_api import GmailTokenExpiredError  # asegúrate que esté disponible
+
     try:
         creds = get_gmail_credentials()
         service = build("gmail", "v1", credentials=creds)
 
         message = MIMEText(message_text)
         message["to"] = to_email
-        message["from"] = "davidmanzanocolombia@gmail.com"  # Reemplaza por tu correo autorizado
+        message["from"] = "davidmanzanocolombia@gmail.com"
         message["subject"] = subject
 
         raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
@@ -39,5 +38,7 @@ def send_gmail_api_email(to_email, subject, message_text):
         return send_message
 
     except HttpError as error:
-        print(f"Error al enviar el correo: {error}")
-        return None
+        if error.resp.status in [401, 403]:
+            raise GmailTokenExpiredError("El token de Gmail ha expirado o es inválido.")
+        raise
+

@@ -4,6 +4,7 @@ from datetime import date, timedelta, datetime
 
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
+from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.conf import settings
 
@@ -14,8 +15,9 @@ from rest_framework.response import Response
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.utils.gmail_api import send_gmail_api_email
+from core.utils.gmail_api import send_gmail_api_email, GmailTokenExpiredError
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from core.models import (
     CustomUser, Contract, RentPaymentHistory, Room, Building,
@@ -27,6 +29,47 @@ from core.serializers import (
     DocumentTypeSerializer, LaundryBookingSerializer, UserChangeRequestSerializer
     )
 
+
+########################################################################################################
+####                                                                                                ####
+####           Toekn Personalizado                                                                  ####
+####                                                                                                ####
+########################################################################################################
+class JWTLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+
+        # Validación de campos requeridos
+        if not email or not password:
+            return Response(
+                {"detail": "Email y password son requeridos."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = authenticate(request, email=email, password=password)
+
+        if not user:
+            return Response(
+                {"detail": "Credenciales inválidas."}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not user.is_active:
+            return Response(
+                {"detail": "Tu cuenta está inactiva."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user_id": user.id,  # Opcional: info adicional del usuario
+        })
+
 ########################################################################################################
 ####                                                                                                ####
 ####            VISTA DE USUARIOS                                                                   ####
@@ -35,7 +78,12 @@ from core.serializers import (
 def send_email_activate(user):
     url = f"{settings.FRONTEND_URL}/verify-account/{user.email_verification_token}"
     mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
-    send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
+    
+    try:
+        send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
+    except GmailTokenExpiredError:
+        raise Exception("Error al enviar correo: token de Gmail expirado o inválido.")
+
 
 ########################################################################################################
 ####                                                                                                ####
@@ -69,13 +117,19 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if instance.role == "tenant":
             instance.email_verification_token = f'{instance.first_name}-{instance.last_name}-{uuid4()}'
             instance.save(update_fields=["email_verification_token"])
-            send_email_activate(instance)
+            try:
+                send_email_activate(instance)
+            except Exception as e:
+                return Response(
+                    {"detail": str(e), "code": "gmail_token_error"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def get_queryset(self):
         user = self.request.user
-        queryset = CustomUser.objects.filter(is_verified=True)
+        queryset = CustomUser.objects.filter()
 
         # 🔐 RESTRICCIÓN POR ROL
         if user.is_superadmin():
@@ -198,6 +252,118 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user.save()
 
         return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
+    def resend_activation(self, request, pk=None):
+        """Permite a un admin reenviar el correo de activación si el usuario aún no ha sido verificado"""
+        user = request.user
+        target = self.get_object()
+
+        if not user.is_superadmin() and not user.is_admin():
+            return Response({"detail": "No tienes permisos para reenviar activaciones."}, status=403)
+
+        if target.is_verified:
+            return Response({"detail": "Este usuario ya ha verificado su cuenta."}, status=400)
+
+        if not target.email_verification_token:
+            target.email_verification_token = f'{target.first_name}-{target.last_name}-{uuid4()}'
+            target.save(update_fields=["email_verification_token"])
+
+        try:
+            send_email_activate(target)
+        except Exception as e:
+            return Response(
+                {"detail": str(e), "code": "gmail_token_error"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        return Response({"detail": f"Correo de activación reenviado a {target.email}"}, status=200)
+
+    @action(detail=True, methods=["patch"], url_path="unblock", permission_classes=[IsAdmin])
+    def unblock_user(self, request, pk=None):
+        """Desbloquea a un usuario reseteando sus intentos de acceso fallidos"""
+        try:
+            user = self.get_object()
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validación adicional de permisos
+        current_user = request.user
+        if current_user.is_admin() and user.role in ["admin", "superadmin"]:
+            return Response(
+                {"detail": "No puedes desbloquear este tipo de usuario."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            # Importar aquí para evitar problemas de importación circular
+            from axes.models import AccessAttempt
+            from axes.utils import reset
+            
+            # Verificar si el usuario tiene intentos registrados
+            attempts = AccessAttempt.objects.filter(username=user.email)
+            attempts_count = attempts.count()
+            
+            if attempts_count == 0:
+                return Response({
+                    "detail": f"El usuario {user.email} no tiene intentos de acceso registrados.",
+                    "user_email": user.email
+                }, status=status.HTTP_200_OK)
+            
+            # Usar la función reset de axes directamente
+            reset(username=user.email)
+            
+            # Verificar que se eliminaron los intentos
+            remaining_attempts = AccessAttempt.objects.filter(username=user.email).count()
+            
+            return Response({
+                "detail": f"Intentos de acceso del usuario {user.email} han sido reseteados.",
+                "user_email": user.email,
+                "attempts_removed": attempts_count,
+                "remaining_attempts": remaining_attempts
+            }, status=status.HTTP_200_OK)
+            
+        except ImportError as e:
+            return Response(
+                {"detail": f"Error de configuración de Axes: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            # Log del error para debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error al desbloquear usuario {user.email}: {str(e)}")
+            
+            return Response(
+                {"detail": f"Error al resetear intentos: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
+    def blocked(self, request):
+        """Devuelve los usuarios bloqueados con información de IP y nombre"""
+        from axes.models import AccessAttempt
+
+        blocked_attempts = AccessAttempt.objects.filter(failures_since_start__gte=5)
+        email_to_ip = {}
+
+        for attempt in blocked_attempts:
+            email_to_ip[attempt.username] = attempt.ip_address
+
+        blocked_users = CustomUser.objects.filter(email__in=email_to_ip.keys())
+
+        response = []
+        for user in blocked_users:
+            response.append({
+                "user": {
+                    "id": str(user.id),
+                    "email": user.email,
+                    "name": f"{user.first_name} {user.last_name}",
+                    "ip": email_to_ip.get(user.email)
+                }
+            })
+
+        return Response(response)
 
 ########################################################################################################
 ####                                                                                                ####
@@ -428,7 +594,7 @@ class RoomViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
     def available(self, request):
         """Devuelve solo las habitaciones disponibles en un `building_id` dado."""
-        building_id = self.request.query_params.get("building_id")
+        building_id = request.query_params.get("building_id")
 
         # Filtramos solo si `building_id` está presente
         if building_id:
@@ -519,15 +685,12 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Filtra las reservas según el rol del usuario"""
         user = self.request.user
-
         if user.is_admin() or user.is_superadmin():
             return LaundryBooking.objects.all()
         return LaundryBooking.objects.filter(user=user)
 
     def create(self, request, *args, **kwargs):
-        """Crear una nueva reserva con comprobante de pago (usuario)"""
         serializer = self.get_serializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             serializer.save(user=request.user, status="pending")
@@ -536,10 +699,9 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def approve(self, request, pk=None):
-        """Aprueba una reserva de lavandería"""
         booking = self.get_object()
 
-        # Si hay una contrapropuesta del usuario, usarla como fecha/hora final
+        # Si hay contrapropuesta, usarla como fecha final
         if booking.status == "counter_proposal":
             booking.date = booking.counter_proposal_date
             booking.time_slot = booking.counter_proposal_time_slot
@@ -550,7 +712,6 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.counter_proposal_date = None
         booking.counter_proposal_time_slot = None
 
-        # Actualizar estado
         booking.status = "approved"
         booking.last_action_by = "admin"
         booking.save()
@@ -559,7 +720,6 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def reject(self, request, pk=None):
-        """Rechaza una reserva con un comentario"""
         booking = self.get_object()
         comment = request.data.get("admin_comment", "")
         if not comment:
@@ -574,12 +734,9 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdmin])
     def propose(self, request, pk=None):
-
         user = self.request.user
         action_user = "user" if user.role == "tenant" else "admin"
-        print(user.role)
 
-        """El admin propone una nueva fecha/hora"""
         booking = self.get_object()
         proposed_date = request.data.get("proposed_date")
         proposed_time_slot = request.data.get("proposed_time_slot")
@@ -597,10 +754,17 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsTenant])
     def accept_proposal(self, request, pk=None):
-        """El usuario acepta la propuesta del admin"""
         booking = self.get_object()
         if booking.status != "proposed":
             return Response({"error": "No hay propuesta pendiente para aceptar"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Aplicar la fecha propuesta como definitiva
+        booking.date = booking.proposed_date
+        booking.time_slot = booking.proposed_time_slot
+
+        # Limpiar campos de propuesta
+        booking.proposed_date = None
+        booking.proposed_time_slot = None
 
         booking.status = "approved"
         booking.save()
@@ -608,11 +772,9 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsTenant])
     def counter_proposal(self, request, pk=None):
-
         user = self.request.user
         action_user = "user" if user.role == "tenant" else "admin"
 
-        """El usuario envía una contrapropuesta"""
         booking = self.get_object()
         counter_date = request.data.get("counter_proposal_date")
         counter_time_slot = request.data.get("counter_proposal_time_slot")
@@ -626,6 +788,7 @@ class LaundryBookingViewSet(viewsets.ModelViewSet):
         booking.last_action_by = action_user
         booking.save()
         return Response({"message": "Contrapropuesta enviada"}, status=status.HTTP_200_OK)
+
 
 ########################################################################################################
 ####                                                                                                ####

@@ -31,7 +31,13 @@ def delete_file_if_exists(file_field):
 
 @receiver(post_delete, sender=CustomUser)
 def delete_user_images(sender, instance, **kwargs):
-    delete_file_if_exists(instance.profile_photo)
+    """
+    Elimina la imagen de perfil del usuario cuando se elimina el usuario,
+    excepto si es la imagen por defecto.
+    """
+    # Verificar si existe la imagen de perfil y no es la imagen por defecto
+    if instance.profile_photo and not instance.profile_photo.name.endswith('adminDefault.jpg'):
+        delete_file_if_exists(instance.profile_photo)
 
 @receiver(post_delete, sender=RentPaymentHistory)
 def delete_rent_receipt(sender, instance, **kwargs):

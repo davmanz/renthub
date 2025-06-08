@@ -26,7 +26,7 @@ export interface User {
   date_joined?: string;
   status_user?: "overdue" | "pending_review" | "ok";
 }
-
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 const formatDate = (dateString?: string) => {
   if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("es-ES", {
@@ -131,15 +131,17 @@ const ProfileSummary = () => {
         <Card elevation={3}>
           <CardContent sx={{ textAlign: "center", py: 3 }}>
             <Avatar
-              src={user?.profile_photo || ""}
-              sx={{
-                width: 120,
-                height: 120,
-                margin: "0 auto 16px",
-                bgcolor: "primary.main",
-              }}
+            src={user?.profile_photo ? `${API_BASE_URL}/${user.profile_photo}` : ""}
+            alt={user?.first_name || "Avatar"}
+            sx={{
+              width: 90,
+              height: 90,
+              margin: "0 auto",
+              border: "3px solid #1976d2",
+              boxShadow: 3,
+            }}
             >
-              {!user?.profile_photo && <AccountCircle sx={{ fontSize: 80 }} />}
+            {!user?.profile_photo && <AccountCircle sx={{ width: 90, height: 90 }} />}
             </Avatar>
             <Typography variant="h5" gutterBottom>
               {user?.first_name} {user?.last_name}

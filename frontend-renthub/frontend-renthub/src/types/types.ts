@@ -139,6 +139,7 @@ export interface LaundryBooking {
 
 
 export interface Contract {
+  user_full_name:string;
   building: string;
   room_number: string;
   building_name: string;

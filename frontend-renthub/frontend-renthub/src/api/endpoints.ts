@@ -11,6 +11,9 @@ const endpoints = {
   userManagement: {
     user: `${API_BASE}/users/`,
     userId: (userId: string) => `${API_BASE}/users/${userId}/`,
+    resendVerification: (userId: string) => `/users/${userId}/resend_activation/`,
+    unlockUser: (userId: string) => `${API_BASE}/users/${userId}/unblock/`,
+    userBlokes: `${API_BASE}/users/blocked/`,
     documentTypes: `${API_BASE}/document-types/`,
     referencePerson: `${API_BASE}/references/`,
   },

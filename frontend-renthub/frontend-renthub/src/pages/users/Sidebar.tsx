@@ -1,32 +1,22 @@
 import {
-  Box,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Avatar,
-  Button,
-  Typography,
-  Divider,
-  Tooltip,
+  Box, Drawer, List, ListItem, ListItemText, ListItemIcon,
+  Avatar, Button, Typography, Divider, Tooltip, ListItemButton,
 } from "@mui/material";
 import {
-  Home,
-  Assignment,
-  Payments,
-  LocalLaundryService,
-  Settings,
-  Logout,
+  Home, Assignment, Payments, LocalLaundryService,
+  Settings, Logout,
 } from "@mui/icons-material";
 import { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
 import endpoints from "../../api/endpoints";
+import {UserInterface} from "../../types/types";
 
+
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 const Sidebar = ({ onSelect }: { onSelect: (section: string) => void }) => {
   const { logout } = useContext(AuthContext);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserInterface | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -56,8 +46,8 @@ const Sidebar = ({ onSelect }: { onSelect: (section: string) => void }) => {
     >
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Avatar
-          src={user?.profile_photo || ""}
-          alt="Avatar"
+          src={user?.profile_photo ? `${API_BASE_URL}/${user.profile_photo}` : ""}
+          alt={user?.first_name || "Avatar"}
           sx={{
             width: 90,
             height: 90,
@@ -77,29 +67,49 @@ const Sidebar = ({ onSelect }: { onSelect: (section: string) => void }) => {
       <Divider sx={{ bgcolor: "#444", mb: 2 }} />
 
       <List>
-        <ListItem  button onClick={() => onSelect("inicio")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-          <ListItemIcon sx={{ color: "#90caf9" }}><Home /></ListItemIcon>
-          <ListItemText primary="Perfil" />
+        <ListItem>
+          <ListItemButton onClick={() => onSelect("inicio")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}>
+              <Home />
+            </ListItemIcon>
+            <ListItemText primary="Perfil" />
+          </ListItemButton>
         </ListItem>
 
-        <ListItem button onClick={() => onSelect("contrato")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-          <ListItemIcon sx={{ color: "#90caf9" }}><Assignment /></ListItemIcon>
-          <ListItemText primary="Contrato" />
+        <ListItem>
+          <ListItemButton onClick={() => onSelect("contrato")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}>
+              <Assignment />
+            </ListItemIcon>
+            <ListItemText primary="Contrato" />
+          </ListItemButton>
         </ListItem>
 
-        <ListItem button onClick={() => onSelect("pagos")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-          <ListItemIcon sx={{ color: "#90caf9" }}><Payments /></ListItemIcon>
-          <ListItemText primary="Pagos" />
+        <ListItem>
+          <ListItemButton onClick={() => onSelect("pagos")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}>
+              <Payments />
+            </ListItemIcon>
+            <ListItemText primary="Pagos" />
+          </ListItemButton>
         </ListItem>
 
-        <ListItem button onClick={() => onSelect("lavanderia")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-          <ListItemIcon sx={{ color: "#90caf9" }}><LocalLaundryService /></ListItemIcon>
-          <ListItemText primary="Lavandería" />
+        <ListItem>
+          <ListItemButton onClick={() => onSelect("lavanderia")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}>
+              <LocalLaundryService />
+            </ListItemIcon>
+            <ListItemText primary="Lavandería" />
+          </ListItemButton>
         </ListItem>
 
-        <ListItem button onClick={() => onSelect("configuracion")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
-          <ListItemIcon sx={{ color: "#90caf9" }}><Settings /></ListItemIcon>
-          <ListItemText primary="Configuración" />
+        <ListItem>
+          <ListItemButton onClick={() => onSelect("configuracion")} sx={{ "&:hover": { bgcolor: "#1e1e1e" } }}>
+            <ListItemIcon sx={{ color: "#90caf9" }}>
+              <Settings />
+            </ListItemIcon>
+            <ListItemText primary="Configuración" />
+          </ListItemButton>
         </ListItem>
       </List>
 

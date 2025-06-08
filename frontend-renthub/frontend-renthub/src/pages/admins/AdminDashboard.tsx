@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { Info, Visibility, Check, Close } from "@mui/icons-material";
 import { DashboardData, SnackbarState, Payment } from "../../types/types";
+import { STATUS_LABELS } from "../../constants/status";
 
 type TabKey = "pays_reject" | "pays_overdue" | "pays_pending_review" | "pending_user" | "pending_admin";
 
@@ -125,7 +126,7 @@ const AdminDashboard = () => {
           </>
         )}
   
-        <TableCell><Chip label={item.status} /></TableCell>
+        <TableCell><Chip label={STATUS_LABELS[item.status] || item.status} /></TableCell>
   
         <TableCell>
           {item.voucher_path && (

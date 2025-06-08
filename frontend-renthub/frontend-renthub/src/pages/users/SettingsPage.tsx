@@ -218,7 +218,11 @@ const SettingsPage = () => {
                     onClick={() => {
                       if (!isFieldPending(field.value)) {
                         setFieldToChange(field.value);
-                        setCurrentValue(user?.[field.value] || "");
+                        setCurrentValue(
+                          field.value === "document_type" 
+                            ? user?.document_type?.id 
+                            : user?.[field.value] || ""
+                        );
                         setNewValue("");
                       }
                     }}
@@ -252,7 +256,7 @@ const SettingsPage = () => {
                 fullWidth
                 value={
                   fieldToChange === "document_type"
-                    ? documentTypes.find((d) => d.id === currentValue)?.name || currentValue
+                    ? user?.document_type?.name || currentValue
                     : currentValue
                 }
                 disabled
