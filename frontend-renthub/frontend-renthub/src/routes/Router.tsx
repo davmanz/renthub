@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useContext, ReactElement } from "react"; // 🔹 Importa ReactElement
-import { AuthContext } from "../context/AuthContext";
-import Login from "../pages/Login";
+import { useContext, ReactElement } from "react";
+import { AuthContext } from "../context/AuthContext.tsx";
+import LoginPage from "../pages/Login";
+//import LoginPageProbe from "../pages/LoginPageProbe";
 import UserDashboard from "../pages/users/UserDashboard";
 import AdminDashboard from "../pages/admins/AdminDashboard";
 import UserManagement from "../pages/admins/UserManagement";
@@ -11,19 +12,38 @@ import LaundryManagement from "../pages/admins/LaundryManagement.tsx"
 import UserPaymentHistory from "../pages/admins/UserPaymentHistory";
 import VerifyAccountPage from "../pages/VerifyAccountPage";
 import ChangeRequestsAdmin from "../pages/admins/ChangeRequestsAdmin";
+import UnauthorizedPage from "../pages/UnauthorizedPage";
 import NotFound from "../pages/NotFound";
 
 const ProtectedRoute = ({ element }: { element: ReactElement }) => {
-  const { user } = useContext(AuthContext)!;
-  return user ? element : <Navigate to="/login" />;
+  const { isAuthenticated } = useContext(AuthContext)!;
+  
+  // Si no está autenticado, redirigir al login
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return element;
+};
+
+const PublicRoute = ({ element }: { element: ReactElement }) => {
+  const { isAuthenticated } = useContext(AuthContext)!;
+  
+  // Si ya está autenticado, redirigir al dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard/user" replace />;
+  }
+  
+  return element;
 };
 
 const AppRoutes = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<PublicRoute element={<LoginPage />} />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/dashboard/user" element={<ProtectedRoute element={<UserDashboard />} />} />
         <Route path="/dashboard/admin" element={<ProtectedRoute element={<AdminDashboard />} />} />
         <Route path="/dashboard/admin/users" element={<ProtectedRoute element={<UserManagement />} />} />

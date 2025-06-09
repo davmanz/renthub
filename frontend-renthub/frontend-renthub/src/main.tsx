@@ -8,7 +8,7 @@ import "react-toastify/dist/ReactToastify.css"; // ✅ Importa estilos
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+
     <AuthProvider>
       <AppRoutes />
       <ToastContainer
@@ -20,5 +20,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         theme="colored"
       />
     </AuthProvider>
-  </React.StrictMode>
+
 );

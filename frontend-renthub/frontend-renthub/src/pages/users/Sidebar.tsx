@@ -46,7 +46,7 @@ const Sidebar = ({ onSelect }: { onSelect: (section: string) => void }) => {
     >
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Avatar
-          src={user?.profile_photo ? `${API_BASE_URL}/${user.profile_photo}` : ""}
+          src={user?.profile_photo ? `${API_BASE_URL}${user.profile_photo}` : ""}
           alt={user?.first_name || "Avatar"}
           sx={{
             width: 90,

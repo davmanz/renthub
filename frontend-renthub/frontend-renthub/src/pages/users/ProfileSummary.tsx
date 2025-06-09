@@ -131,7 +131,7 @@ const ProfileSummary = () => {
         <Card elevation={3}>
           <CardContent sx={{ textAlign: "center", py: 3 }}>
             <Avatar
-            src={user?.profile_photo ? `${API_BASE_URL}/${user.profile_photo}` : ""}
+            src={user?.profile_photo ? `${API_BASE_URL}${user.profile_photo}` : ""}
             alt={user?.first_name || "Avatar"}
             sx={{
               width: 90,

@@ -7,18 +7,21 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ access: string; refresh: string; user: any }>; 
   logout: () => void;
   isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   login: async () => ({ access: '', refresh: '', user: null }), 
   logout: () => {},
-  isLoading: false
+  isLoading: false,
+  isAuthenticated: false
 });
 
 const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<string | null>(localStorage.getItem("user") || null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const refreshToken = async () => {
     try {
@@ -29,23 +32,39 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("access", response.data.access);
       return true;
     } catch (error) {
-      logout();
+      clearAuthData();
       return false;
     }
+  };
+
+  const clearAuthData = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("user");
+    setUser(null);
+    setIsAuthenticated(false);
   };
 
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("access");
-      if (!token) return;
+      if (!token) {
+        setIsAuthenticated(false);
+        return;
+      }
 
       try {
         await api.get(endpoints.auth.me, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        setIsAuthenticated(true);
       } catch (error) {
         const refreshed = await refreshToken();
-        if (!refreshed) window.location.href = "/login";
+        if (!refreshed) {
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(true);
+        }
       }
     };
 
@@ -55,20 +74,18 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // Hacer login y obtener datos del usuario en una sola operación
       const loginResponse = await api.post(endpoints.auth.login, { email, password });
       
-      // Guardar tokens
       localStorage.setItem("access", loginResponse.data.access);
       localStorage.setItem("refresh", loginResponse.data.refresh);
       localStorage.setItem("user", email);
 
-      // Obtener datos del usuario
       const userResponse = await api.get(endpoints.auth.me, {
         headers: { Authorization: `Bearer ${loginResponse.data.access}` }
       });
 
       setUser(email);
+      setIsAuthenticated(true);
       
       return {
         access: loginResponse.data.access,
@@ -76,7 +93,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         user: userResponse.data
       };
     } catch (error) {
-      // Propagar el error para que Login.tsx pueda manejarlo
       throw error;
     } finally {
       setIsLoading(false);
@@ -84,15 +100,11 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    localStorage.removeItem("user");
-    setUser(null);
-    window.location.href = "/login";
+    clearAuthData();
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
