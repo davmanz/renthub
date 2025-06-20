@@ -87,7 +87,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
     is_verified = serializers.BooleanField(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True)
     role = serializers.CharField(required=False)
-    profile_photo = serializers.SerializerMethodField()
+    profile_photo = serializers.ImageField(required=False)
     document_type = serializers.SerializerMethodField()
     reference_1 = serializers.SerializerMethodField()
     reference_2 = serializers.SerializerMethodField()

@@ -207,6 +207,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
         elif request.method == "PATCH":
+            # Permite actualizar solo la foto de perfil
             serializer = self.get_serializer(
                 user,
                 data=request.data,
