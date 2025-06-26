@@ -1,0 +1,17 @@
+# Ignorar archivos sensibles
+.env
+
+# Ignorar entornos virtuales
+venv/
+.env/
+__pycache__/
+*.pyc
+
+# Ignorar archivos de desarrollo
+*.log
+*.db
+
+# Ignorar configuraciones de editores
+.vscode/
+.idea/
+*.swp

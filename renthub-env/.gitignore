@@ -1,0 +1,69 @@
+# --- Docker ---
+data/
+docker-compose.override.yml
+*.log
+*.pid
+*.sock
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+docker-entrypoint.sh
+
+# --- Python / Django ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+db.sqlite3
+*/media/*
+/staticfiles/
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.vscode/
+.idea/
+.DS_Store
+
+# --- Entornos virtuales (venv) ---
+venv/
+.env/
+*.venv
+*.env/
+venv.bak/
+backend.env
+frontend.env
+
+# --- Node.js / Vite / React ---
+node_modules/
+dist/
+.cache/
+.npm/
+.yarn/
+.yarn-integrity
+.pnp/
+.pnp.js
+.vite/
+*.log
+
+# --- Otros ---
+*.bak
+*.tmp
+*.~*
+*.orig
+
+# --- Carpeta Migraciones ---
+*/migrations/*
+/migrations/*.py
+*/migrations/*.py
+!*/migrations/__init__.py
+/backend-renthub/core/migrations/*
+
+# --- Tokens --- #
+token.json

@@ -1,0 +1,97 @@
+services:
+  # Servicio de PostgreSQL
+  postgres:
+    image: postgres:15.10
+    container_name: renthub-db
+    env_file:
+      - ./renthub-env/backend.env
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data
+    networks:
+      - renthub-net
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "renthub"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+      timeout: 5s
+    restart: unless-stopped
+
+  # Backend (Django + Gunicorn)
+  backend:
+    build: ./renthub-backend
+    container_name: renthub-backend
+    volumes:
+      - ./data/crd:/app/core/utils/crd/
+      - media_files:/app/media 
+    ports:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./renthub-env/backend.env
+    networks:
+      - renthub-net
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "showmigrations"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend
+  frontend:
+    build: ./renthub-frontend
+    container_name: renthub-frontend
+    volumes:
+    - media_files:/app/media:ro
+    restart: unless-stopped
+    env_file:
+      - ./renthub-env/frontend.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 200M
+        reservations:
+          cpus: '0.1'
+          memory: 100M
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - renthub-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  #pgdata:
+  api_gmail:
+  media_files:
+
+networks:
+  renthub-net:
+    driver: bridge

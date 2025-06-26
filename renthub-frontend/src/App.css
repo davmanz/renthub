@@ -1,0 +1,25 @@
+.renthub-header {
+  display: flex;
+  justify-content: center;
+  margin-top: 36px;
+  margin-bottom: 10px;
+}
+
+.renthub-logo {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(90deg, #0f1419 0%, #1a1f2e 60%, #64b5f6 120%);
+  border-radius: 24px;
+  padding: 14px 28px;
+  box-shadow: 0 8px 32px rgba(100, 181, 246, 0.15);
+}
+
+.renthub-title {
+  font-size: 2.7rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: white;
+  text-shadow: 0 2px 16px #90caf9cc;
+  font-family: 'Montserrat', 'Inter', Arial, sans-serif;
+}
