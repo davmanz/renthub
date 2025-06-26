@@ -1,6 +1,3 @@
-
--20
-
 # RentHub
 
 RentHub es una aplicación web **full‑stack** para la gestión de alquileres de propiedades. El proyecto se compone de un frontend en React/TypeScript y un backend REST en Django, todo orquestado mediante Docker Compose junto con una base de datos PostgreSQL.
