@@ -1,8 +1,10 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
-import endpoints from "./endpoints";
+//import endpoints from "./endpoints";
 
 const api = axios.create({
-  baseURL: endpoints.auth.me.split("/users/me/")[0],
+  //baseURL: endpoints.auth.me.split("/users/me/")[0],
+  //baseURL: import.meta.env.VITE_API_URL,
+  baseURL: '/api',
 });
 
 // Interceptor para agregar token JWT automáticamente
