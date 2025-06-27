@@ -25,7 +25,7 @@ services:
       - ./data/crd:/app/core/utils/crd/
       - media_files:/app/media 
     depends_on:
-      postgres:
+      renthub-db:
         condition: service_healthy
     env_file:
       - ./renthub-env/backend.env
@@ -76,7 +76,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      renthub-backend:
+        condition: service_healthy
     networks:
       - renthub-net
     logging:
