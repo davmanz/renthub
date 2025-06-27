@@ -1,6 +1,6 @@
 services:
   # Servicio de PostgreSQL
-  postgres:
+  renthub-db:
     image: postgres:15.10
     container_name: renthub-db
     env_file:
@@ -18,14 +18,12 @@ services:
     restart: unless-stopped
 
   # Backend (Django + Gunicorn)
-  backend:
+  renthub-backend:
     build: ./renthub-backend
     container_name: renthub-backend
     volumes:
       - ./data/crd:/app/core/utils/crd/
       - media_files:/app/media 
-    ports:
-      - "8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,7 +52,7 @@ services:
         max-file: "3"
 
   # Frontend
-  frontend:
+  renthub-frontend:
     build: ./renthub-frontend
     container_name: renthub-frontend
     volumes:

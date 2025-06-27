@@ -5,7 +5,6 @@ import os
 # Gestion de Imagenes
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
@@ -15,14 +14,10 @@ DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 FRONTEND = os.environ.get("FRONTEND_URL")
 DOMINIO = os.environ.get("DOMINIO", "localhost")
-
-AXES_FAILURE = os.environ.get("AXES_FAILURE_LIMIT", 5)  # Limite de intentos fallidos
+AXES_FAILURE = os.environ.get("AXES_FAILURE_LIMIT", 5)
 AXES_COOLOFF = os.environ.get("AXES_COOLOFF_TIME", 5)
-AXES_LOCKOUT = [os.environ.get("AXES_LOCKOUT_PARAMETERS"), "ip_address"]  # Bloqueo por IP
-AXES_RESET = os.environ.get("AXES_RESET_ON_SUCCESS", True)  # Resetea intentos después de un login exitoso
-
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-
+AXES_LOCKOUT = [os.environ.get("AXES_LOCKOUT_PARAMETERS"), "ip_address"]
+AXES_RESET = os.environ.get("AXES_RESET_ON_SUCCESS", True) 
 TIME_Z = os.environ.get("TIME_ZONE", "UTC")
 
 # Variables Database
@@ -166,10 +161,10 @@ SIMPLE_JWT = {
     "SIGNING_KEY": SECRET_KEY,  # Usa la clave secreta de Django
 }
 # Configuracion de Axes
-AXES_FAILURE_LIMIT = AXES_FAILURE  # Limite de intentos fallidos
-AXES_COOLOFF_TIME = timedelta(minutes=int(AXES_COOLOFF))  # Tiempo de espera después de fallos
-AXES_LOCKOUT_PARAMETERS = [AXES_LOCKOUT]  # Bloqueo por IP
-AXES_RESET_ON_SUCCESS = AXES_RESET  # Resetea intentos después de un login exitoso
+AXES_FAILURE_LIMIT = AXES_FAILURE
+AXES_COOLOFF_TIME = timedelta(minutes=int(AXES_COOLOFF))
+AXES_LOCKOUT_PARAMETERS = AXES_LOCKOUT
+AXES_RESET_ON_SUCCESS = AXES_RESET 
 
 # Configuracion de CORS
 FRONTEND_URL = FRONTEND
