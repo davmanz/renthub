@@ -45,11 +45,14 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copiar configuración de Nginx personalizada
 COPY ./nginx.conf /etc/nginx/nginx.conf
 
+# Creacion del directorio para certificados SSL
+RUN mkdir -p /etc/nginx/ssl
+
 # Usar el usuario seguro de nginx
 # USER nginx
 
 # Exponer puerto
-EXPOSE 80
+EXPOSE 80 443
 
 # Mantener Nginx en primer plano
 CMD ["nginx", "-g", "daemon off;"]
