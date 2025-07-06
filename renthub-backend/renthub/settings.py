@@ -170,8 +170,13 @@ AXES_RESET_ON_SUCCESS = AXES_RESET
 FRONTEND_URL = FRONTEND
 
 CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,  # 👈 Permitir solicitudes desde el frontend
+    FRONTEND_URL,
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Para permitir el envío de cookies y headers de autenticación
 
+# Indica a Django que confíe en el header X-Forwarded-Proto para detectar HTTPS correctamente
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Opcionalmente, fuerza a que siempre use HTTPS para las URLs generadas por build_absolute_uri()
+SECURE_SSL_REDIRECT = True  # (recomendado si solo usas HTTPS)

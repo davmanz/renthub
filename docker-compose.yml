@@ -22,8 +22,7 @@ services:
     build: ./renthub-backend
     container_name: renthub-backend
     volumes:
-      - ./data/crd:/app/core/utils/crd/
-      - media_files:/app/media 
+      - ./data/crd:/app/core/utils/crd:ro
     depends_on:
       renthub-db:
         condition: service_healthy
@@ -56,12 +55,13 @@ services:
     build: ./renthub-frontend
     container_name: renthub-frontend
     volumes:
-    - media_files:/app/media:ro
+    - ./data/media:/app/media:ro
+    - ./data/ssl:/etc/nginx/ssl:ro
     restart: unless-stopped
     env_file:
       - ./renthub-env/frontend.env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: ["CMD", "curl", "-f", "http://localhost:443"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,6 +75,7 @@ services:
           memory: 100M
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       renthub-backend:
         condition: service_healthy
@@ -85,11 +86,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-volumes:
-  #pgdata:
-  api_gmail:
-  media_files:
 
 networks:
   renthub-net:
