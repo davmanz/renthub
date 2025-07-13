@@ -4,11 +4,11 @@ docker-compose.override.yml
 *.log
 *.pid
 *.sock
-.env
-.env.local
-.env.development
-.env.production
-.env.test
+*.env
+*.env.local
+*.env.development
+*.env.production
+*.env.test
 docker-entrypoint.sh
 
 # --- Python / Django ---

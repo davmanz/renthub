@@ -8,10 +8,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+#Parseo de hosthosts_env = os.environ.get("ALLOWED_HOSTS", "")
+hosts_env = os.environ.get("ALLOWED_HOSTS", "")
+if hosts_env:
+    # Separa por comas y quita espacios sobrantes
+    ALLOWED_HOSTS = [h.strip() for h in hosts_env.split(",")]
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", ["localhost","127.0.0.1"])
 FRONTEND = os.environ.get("FRONTEND_URL")
 DOMINIO = os.environ.get("DOMINIO", "localhost")
 AXES_FAILURE = os.environ.get("AXES_FAILURE_LIMIT", 5)
