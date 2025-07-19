@@ -1,4 +1,4 @@
-FROM python:3.13.3-slim
+FROM python:3.14-rc-slim
 
 # Establecer variables de entorno
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -7,6 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on
 
+# Actualizar paquetes PAM
+RUN apt update && \
+    apt upgrade libpam-modules libpam-modules-bin libpam-runtime libpam0g
 
 # Crear usuario no root
 RUN groupadd -r renthub && useradd -r -g renthub renthub
