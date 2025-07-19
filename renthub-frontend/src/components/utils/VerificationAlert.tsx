@@ -2,16 +2,24 @@ import { Alert, Box, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { MESSAGES } from "../../constants/messages";
 
-export const VerificationAlert = ({ type, countdown }: { type: "success" | "error" | "invalid", countdown?: number }) => {
+interface VerificationAlertProps {
+  type: "success" | "error" | "invalid";
+  countdown?: number;
+  isAuthenticated?: boolean;
+}
+
+export const VerificationAlert = ({ type, countdown, isAuthenticated }: VerificationAlertProps) => {
   const navigate = useNavigate();
 
   if (type === "success") {
     return (
       <Alert severity="success" variant="filled" sx={{ mt: 3 }}>
         <Typography variant="body1" fontWeight="500">{MESSAGES.SUCCESS}</Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          Serás redirigido al inicio de sesión en {countdown} segundos...
-        </Typography>
+        {!isAuthenticated && (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Serás redirigido al inicio de sesión en {countdown} segundos...
+          </Typography>
+        )}
       </Alert>
     );
   }
@@ -23,15 +31,17 @@ export const VerificationAlert = ({ type, countdown }: { type: "success" | "erro
           {type === "error" ? MESSAGES.ERROR : MESSAGES.INVALID}
         </Typography>
       </Alert>
-      <Box textAlign="center" mt={3}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => navigate("/login")}
-        >
-          Volver al inicio
-        </Button>
-      </Box>
+      {!isAuthenticated && (
+        <Box textAlign="center" mt={3}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate("/login")}
+          >
+            Volver al inicio
+          </Button>
+        </Box>
+      )}
     </>
   );
 };

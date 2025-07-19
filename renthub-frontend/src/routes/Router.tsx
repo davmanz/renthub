@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useContext, ReactElement } from "react";
 import { AuthContext } from "../context/AuthContext.tsx";
-import { DashboardProvider } from "../components/shared/DashboardContext.tsx"; // Corrige la ruta si tu contexto está en otro lugar
+import { DashboardProvider } from "../components/shared/DashboardContext.tsx";
 
+// Pages
 import LoginPage from "../pages/Login";
 import UserDashboard from "../pages/users/UserDashboard.tsx";
 import AdminDashboard from "../pages/admins/AdminDashboard.tsx";
@@ -15,6 +16,7 @@ import VerifyAccountPage from "../pages/VerifyAccountPage";
 import ChangeRequestsAdmin from "../pages/admins/ChangeRequestsAdmin";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 import NotFound from "../pages/NotFound";
+import { Box, CircularProgress } from "@mui/material";
 
 // Ruta protegida: solo para usuarios autenticados
 const ProtectedRoute = ({ element }: { element: ReactElement }) => {
@@ -27,14 +29,27 @@ const ProtectedRoute = ({ element }: { element: ReactElement }) => {
 
 // Ruta pública: solo para usuarios NO autenticados
 const PublicRoute = ({ element }: { element: ReactElement }) => {
-  const { isAuthenticated } = useContext(AuthContext)!;
+  const { isAuthenticated, user } = useContext(AuthContext)!;
   if (isAuthenticated) {
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      return <Navigate to="/dashboard/admin" replace />;
+    }
     return <Navigate to="/dashboard/user" replace />;
   }
   return element;
 };
 
 const AppRoutes = () => {
+  const { isLoading } = useContext(AuthContext)!;
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Router>
       <Routes>

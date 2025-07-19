@@ -1,6 +1,10 @@
 from pathlib import Path
 from datetime import timedelta
 import os
+# from dotenv import load_dotenv
+
+# Load environment variables from .env file
+# load_dotenv()
 
 # Gestion de Imagenes
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -18,22 +22,35 @@ else:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
-FRONTEND = os.environ.get("FRONTEND_URL")
+# FRONTEND_URL
+FRONTEND_URL = os.environ.get("FRONTEND_URL")
+# DOMINIO
 DOMINIO = os.environ.get("DOMINIO", "localhost")
+# AXES_FAILURE_LIMIT
 AXES_FAILURE = os.environ.get("AXES_FAILURE_LIMIT", 5)
+# AXES_COOLOFF_TIME
 AXES_COOLOFF = os.environ.get("AXES_COOLOFF_TIME", 5)
+# AXES_LOCKOUT_PARAMETERS
 AXES_LOCKOUT = [os.environ.get("AXES_LOCKOUT_PARAMETERS"), "ip_address"]
 AXES_RESET = os.environ.get("AXES_RESET_ON_SUCCESS", True) 
 TIME_Z = os.environ.get("TIME_ZONE", "UTC")
 
+# Variables de la base de datos
+USER= os.environ.get("POSTGRES_USER", default="renthub")
+PASSWORD= os.environ.get("POSTGRES_PASSWORD", default="renthub")
+HOST= os.environ.get("POSTGRES_HOST", default="localhost")
+PORT= os.environ.get("POSTGRES_PORT", default="5432")
+NAME= os.environ.get("POSTGRES_DB", default="renthub_db")
+
 # Variables Database
 POSTGRES_DB = {
-    "USER": os.environ.get("POSTGRES_USER", default="renthub"),
-    "PASSWORD": os.environ.get("POSTGRES_PASSWORD", default="renthub"),
-    "HOST": os.environ.get("POSTGRES_HOST", default="localhost"),
-    "PORT": os.environ.get("POSTGRES_PORT", default="5432"),
-    "NAME": os.environ.get("POSTGRES_DB", default="renthub_db"),
+    "NAME": NAME,
+    "USER": USER,
+    "PASSWORD":PASSWORD,
+    "HOST": HOST,
+    "PORT": PORT,
 }
 
 # Application definition
@@ -84,18 +101,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'renthub.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get("POSTGRES_DB", "renthub_db"),
-        'USER': os.environ.get("POSTGRES_USER", "renthub"),
-        'PASSWORD': os.environ.get("POSTGRES_PASSWORD", "renthub"),
-        'HOST': os.environ.get("POSTGRES_HOST", "localhost"),
-        'PORT': os.environ.get("POSTGRES_PORT", "5432"),
+        'NAME': POSTGRES_DB["NAME"],
+        'USER': POSTGRES_DB["USER"],
+        'PASSWORD': POSTGRES_DB["PASSWORD"],
+        'HOST': POSTGRES_DB["HOST"],
+        'PORT': POSTGRES_DB["PORT"],
     }
 }
 
@@ -145,7 +161,7 @@ AUTH_USER_MODEL = "core.CustomUser"
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'axes.backends.AxesStandaloneBackend',  # ← Agregar esto
+    'axes.backends.AxesStandaloneBackend'
 ]
 
 # Configuracion de Rest Framework
@@ -165,7 +181,7 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,  # Usa la clave secreta de Django
+    "SIGNING_KEY": SECRET_KEY,
 }
 # Configuracion de Axes
 AXES_FAILURE_LIMIT = AXES_FAILURE
@@ -173,11 +189,8 @@ AXES_COOLOFF_TIME = timedelta(minutes=int(AXES_COOLOFF))
 AXES_LOCKOUT_PARAMETERS = AXES_LOCKOUT
 AXES_RESET_ON_SUCCESS = AXES_RESET 
 
-# Configuracion de CORS
-FRONTEND_URL = FRONTEND
-
 CORS_ALLOWED_ORIGINS = [
-    FRONTEND_URL,
+    str(FRONTEND_URL),
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # Para permitir el envío de cookies y headers de autenticación
