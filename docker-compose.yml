@@ -22,7 +22,7 @@ services:
     build: ./renthub-backend
     container_name: renthub-backend
     volumes:
-      - ./data/crd:/app/core/utils/crd:ro
+      - ./data/crd:/app/core/utils/crd:rw
     depends_on:
       renthub-db:
         condition: service_healthy
