@@ -3,7 +3,7 @@ import {
   Box, Paper, Fade, Typography, CircularProgress, Slide, alpha, Button
 } from "@mui/material";
 import { 
-  Security, CheckCircle, TrendingUp, Hotel, ArrowForward, Home
+  Security, CheckCircle, Error, ArrowForward, Home
 } from "@mui/icons-material";
 import { keyframes } from "@mui/system";
 import { useAccountVerification } from "../components/utils/useAccountVerification";
@@ -79,6 +79,19 @@ const VerifyAccountPage = () => {
     return { text: "Ir a Login", icon: <ArrowForward /> };
   };
 
+  // Función para obtener el icono según el status
+  const getStatusIcon = () => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle sx={{ fontSize: 40, color: '#4caf50' }} />;
+      case 'error':
+      case 'invalid':
+        return <Error sx={{ fontSize: 40, color: '#f44336' }} />;
+      default:
+        return <Security sx={{ fontSize: 40, color: '#64b5f6' }} />;
+    }
+  };
+
   return (
     <Box
       display="flex"
@@ -110,28 +123,81 @@ const VerifyAccountPage = () => {
           <Box
             sx={{
               background: 'linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #64b5f6 100%)',
-              color: "white", p: 4, mb: 4, mx: { xs: -4, sm: -6 }, mt: { xs: -4, sm: -6 },
-              textAlign: "center", boxShadow: "0 8px 32px rgba(100, 181, 246, 0.3)",
+              color: "white", 
+              p: 4, 
+              mb: 4, 
+              mx: { xs: -4, sm: -6 }, 
+              mt: { xs: -4, sm: -6 },
+              textAlign: "center", 
+              boxShadow: "0 8px 32px rgba(100, 181, 246, 0.3)",
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, mb: 2 }}>
-              <Box sx={{ p: 2, borderRadius: '50%', bgcolor: alpha('#64b5f6', 0.15), border: '1px solid rgba(100, 181, 246, 0.3)', animation: `${glow} 2s ease-in-out infinite` }}>
-                <Security sx={{ fontSize: 40, color: '#64b5f6' }} />
+              <Box 
+                sx={{ 
+                  p: 2, 
+                  borderRadius: '50%', 
+                  bgcolor: alpha('#64b5f6', 0.15), 
+                  border: '1px solid rgba(100, 181, 246, 0.3)', 
+                  animation: isLoading 
+                    ? `${glow} 2s ease-in-out infinite, ${float} 3s ease-in-out infinite` 
+                    : `${glow} 2s ease-in-out infinite`
+                }}
+              >
+                {isLoading ? (
+                  <Security sx={{ fontSize: 40, color: '#64b5f6' }} />
+                ) : (
+                  getStatusIcon()
+                )}
               </Box>
             </Box>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, background: 'linear-gradient(45deg, #64b5f6, #90caf9)', backgroundClip: 'text', color: 'transparent', mb: 1 }}>
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700, 
+                background: 'linear-gradient(45deg, #64b5f6, #90caf9)', 
+                backgroundClip: 'text', 
+                color: 'transparent', 
+                mb: 1 
+              }}
+            >
               Verificación de Cuenta
             </Typography>
-            <Typography variant="body1" sx={{ opacity: 0.9, color: alpha('#90caf9', 0.8) }}>
-              Validando tu identidad
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                opacity: 0.9, 
+                color: alpha('#90caf9', 0.8) 
+              }}
+            >
+              {isLoading ? 'Validando tu identidad' : 
+               status === 'success' ? 'Cuenta verificada exitosamente' :
+               status === 'error' ? 'Error en la verificación' :
+               'Token inválido'}
             </Typography>
           </Box>
 
           {isLoading && (
             <Slide direction="up" in={isLoading} timeout={600}>
               <Box display="flex" flexDirection="column" alignItems="center" mt={3}>
-                <CircularProgress size={80} thickness={4} sx={{ color: '#64b5f6', mb: 3 }} />
-                <Typography variant="h6" sx={{ color: '#90caf9', fontWeight: 600, animation: `${pulse} 2s infinite` }}>
+                <CircularProgress 
+                  size={80} 
+                  thickness={4} 
+                  sx={{ 
+                    color: '#64b5f6', 
+                    mb: 3,
+                    animation: `${float} 2s ease-in-out infinite`
+                  }} 
+                />
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    color: '#90caf9', 
+                    fontWeight: 600, 
+                    animation: `${pulse} 2s infinite` 
+                  }}
+                >
                   Verificando...
                 </Typography>
               </Box>
@@ -140,8 +206,19 @@ const VerifyAccountPage = () => {
 
           {showResult && (
             <Slide direction="up" in={showResult} timeout={600}>
-              <Box sx={{ p: 3, borderRadius: 3, bgcolor: alpha('#64b5f6', 0.05), border: '1px solid rgba(100, 181, 246, 0.2)' }}>
-                <VerificationAlert type={status} countdown={countdown} isAuthenticated={isAuthenticated} />
+              <Box 
+                sx={{ 
+                  p: 3, 
+                  borderRadius: 3, 
+                  bgcolor: alpha('#64b5f6', 0.05), 
+                  border: '1px solid rgba(100, 181, 246, 0.2)' 
+                }}
+              >
+                <VerificationAlert 
+                  type={status} 
+                  countdown={countdown} 
+                  isAuthenticated={isAuthenticated} 
+                />
                 {(status === 'success' && isAuthenticated) || status === 'error' || status === 'invalid' ? (
                   <Box mt={3} display="flex" justifyContent="center">
                     <Button
@@ -154,7 +231,9 @@ const VerifyAccountPage = () => {
                         boxShadow: '0 4px 15px 0 rgba(100, 181, 246, 0.4)',
                         '&:hover': {
                           boxShadow: '0 6px 20px 0 rgba(100, 181, 246, 0.5)',
-                        }
+                          transform: 'translateY(-2px)',
+                        },
+                        transition: 'all 0.3s ease'
                       }}
                     >
                       {getButtonInfo().text}
