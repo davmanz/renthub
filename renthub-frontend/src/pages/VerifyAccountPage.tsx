@@ -215,7 +215,7 @@ const VerifyAccountPage = () => {
                 }}
               >
                 <VerificationAlert 
-                  type={status} 
+                  type={["success", "error", "invalid"].includes(status) ? status as "success" | "error" | "invalid" : "error"}
                   countdown={countdown} 
                   isAuthenticated={isAuthenticated} 
                 />
