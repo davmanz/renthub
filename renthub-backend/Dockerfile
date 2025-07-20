@@ -7,21 +7,31 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on
 
-# Actualizar paquetes PAM
-RUN apt update && apt install -y libpam-modules libpam-modules-bin libpam-runtime libpam0g
-
 # Crear usuario no root
 RUN groupadd -r renthub && useradd -r -g renthub renthub
 
 # Instalar dependencias del sistema y limpiar en una sola capa
 RUN apt update && apt install -y --no-install-recommends \
+    libpam-modules \
+    libpam-modules-bin \
+    libpam-runtime \
+    libpam0g \
     build-essential \
     libpq-dev \
     libffi-dev \
     libssl-dev \
-    gcc libpq-dev \
+    gcc \
+    zlib1g-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libwebp-dev \
+    libopenjp2-7-dev \
+    tcl-dev tk-dev \
+    python3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
