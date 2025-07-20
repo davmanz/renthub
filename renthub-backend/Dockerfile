@@ -8,8 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on
 
 # Actualizar paquetes PAM
-RUN apt update && \
-    apt upgrade libpam-modules libpam-modules-bin libpam-runtime libpam0g
+RUN apt update && apt install -y libpam-modules libpam-modules-bin libpam-runtime libpam0g
 
 # Crear usuario no root
 RUN groupadd -r renthub && useradd -r -g renthub renthub
