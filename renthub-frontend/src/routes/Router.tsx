@@ -17,6 +17,7 @@ import ChangeRequestsAdmin from "../pages/admins/ChangeRequestsAdmin";
 import UnauthorizedPage from "../pages/UnauthorizedPage";
 import NotFound from "../pages/NotFound";
 import { Box, CircularProgress } from "@mui/material";
+import ProfilePage from "../pages/admins/ProfilePage.tsx";
 
 // Ruta protegida: solo para usuarios autenticados
 const ProtectedRoute = ({ element }: { element: ReactElement }) => {
@@ -120,12 +121,17 @@ const AppRoutes = () => {
 
         <Route
           path="/dashboard/admin/payment-history"
-          element={<UserPaymentHistory />}
+          element={<ProtectedRoute element={<UserPaymentHistory />} />}
         />
 
         <Route
           path="/dashboard/admin/change-requests"
-          element={<ChangeRequestsAdmin />}
+          element={<ProtectedRoute element={<ChangeRequestsAdmin />} />}
+        />
+
+        <Route
+          path="/dashboard/admin/profile"
+          element={<ProtectedRoute element={<ProfilePage />} />}
         />
 
         <Route
