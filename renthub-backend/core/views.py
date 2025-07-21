@@ -6,6 +6,9 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.contrib.auth import authenticate
 from django.core.cache import cache
+
+from django.core.mail import EmailMultiAlternatives
+
 from django.conf import settings
 
 from rest_framework import viewsets, status
@@ -17,7 +20,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from core.utils.gmail_api import send_gmail_api_email, GmailTokenExpiredError
 from core.permissions import IsSuperAdmin, IsAdmin, IsTenant
 from core.models import (
     CustomUser, Contract, RentPaymentHistory, Room, Building,
@@ -75,12 +77,46 @@ class JWTLoginView(APIView):
 ########################################################################################################
 def send_email_activate(user):
     url = f"{settings.DOMINIO}/verify-account/{user.email_verification_token}"
-    mensaje = f"Hola {user.first_name}, activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}"
-    
+    subject = "Bienvenido a Renthub!"
+    from_email = settings.DEFAULT_FROM_EMAIL
+    to_email = [user.email]
+
+    # Contenido en texto plano
+    text_content = (
+        f"Hola {user.first_name},\n\n"
+        f"Gracias por registrarte en Renthub.\n"
+        f"Activa tu cuenta haciendo clic en el siguiente enlace:\n\n{url}\n\n"
+        "Si no te registraste, ignora este mensaje."
+    )
+
+    # Contenido HTML
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #333333;">¡Bienvenido a <span style="color: #4CAF50;">Renthub</span>!</h2>
+          <p>Hola {user.first_name},</p>
+          <p>Gracias por registrarte. Estamos encantados de tenerte con nosotros.</p>
+          <p>Para comenzar, por favor activa tu cuenta haciendo clic en el siguiente botón:</p>
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="{url}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px;">Activar mi cuenta</a>
+          </p>
+          <p>Si no solicitaste esta cuenta, puedes ignorar este mensaje.</p>
+          <p>— El equipo de Renthub</p>
+        </div>
+      </body>
+    </html>
+    """
+
     try:
-        send_gmail_api_email(user.email, "Activa tu cuenta", mensaje)
-    except GmailTokenExpiredError:
-        raise Exception("Error al enviar correo: token de Gmail expirado o inválido.")
+        msg = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        return {"success": True, "message": "Correo enviado correctamente"}
+    
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 
 ########################################################################################################
@@ -168,27 +204,27 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated])
     def me(self, request):
-        """GET: Devuelve la información del usuario autenticado y su estado de pagos.
-        PATCH: Permite actualizar solo la foto de perfil del usuario autenticado.
+        """
+        GET: Devuelve la información del usuario autenticado.
+        PATCH:
+            - Superadmin: puede actualizar toda su información personal (excepto rol, estado, etc.)
+            - Otros roles: solo pueden actualizar su foto de perfil.
         """
         user = request.user
 
         if request.method == "GET":
             serializer = self.get_serializer(user)
 
-            # Solo los tenants reciben el campo `status_user`
+            # Incluye `status_user` si es tenant
             status_user = None
             if user.is_tenant():
                 today = datetime.today()
                 current_year_month = f"{today.year}-{today.month:02d}"
-
-                # Obtener todos los contratos del usuario
                 contracts = user.contracts.all()
                 payments = RentPaymentHistory.objects.filter(
                     contract__in=contracts,
                     month_paid__lte=current_year_month
                 )
-
                 if payments.filter(status="overdue").exists():
                     status_user = "overdue"
                 elif payments.filter(status="rejected").exists():
@@ -205,26 +241,34 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             return Response(response_data)
 
         elif request.method == "PATCH":
-            # Permite actualizar solo la foto de perfil
-            serializer = self.get_serializer(
-                user,
-                data=request.data,
-                partial=True
-            )
+            serializer = self.get_serializer(user, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
 
-            # Asegurarse de que solo se actualice profile_photo
-            allowed_fields = {"profile_photo"}
+            # === VALIDACIÓN DE CAMPOS SEGÚN ROL ===
+            allowed_fields = set()
+
+            if user.is_superadmin():
+                # ✅ Superadmin puede actualizar lo esencial (excepto rol, permisos)
+                allowed_fields = {
+                    "first_name", "last_name", "email", "phone_number",
+                    "document_type", "document_type_id", "document_number",
+                    "profile_photo", "reference_1", "reference_1_id", "reference_2", "reference_2_id"
+                }
+            else:
+                # ❌ Usuarios comunes solo pueden modificar su foto
+                allowed_fields = {"profile_photo"}
+
             incoming_fields = set(serializer.validated_data.keys())
 
             if not incoming_fields.issubset(allowed_fields):
                 return Response(
-                    {"detail": "Solo se permite actualizar la foto de perfil."},
-                    status=400
+                    {"detail": "No tienes permiso para modificar estos campos."},
+                    status=403
                 )
 
             serializer.save()
             return Response(serializer.data)
+
     
     @action(detail=False, methods=["post"], permission_classes=[IsAuthenticated], url_path="change_password")
     def change_password(self, request):

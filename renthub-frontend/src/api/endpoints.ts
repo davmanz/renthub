@@ -10,6 +10,10 @@ const endpoints = {
     verifyAccount: (token: string) => `${API_BASE}/verify-account/${token}/`,
   },
 
+  users: {
+    update: (userId: string) => `${API_BASE}/users/${userId}/`,
+  },
+
   userManagement: {
     user: `${API_BASE}/users/`,
     userId: (userId: string) => `${API_BASE}/users/${userId}/`,
